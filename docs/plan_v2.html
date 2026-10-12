@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trading AI v2 төлөвлөгөө</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --text: #1b1d22; --muted: #646a75; --line: #e3e4e8;
+    --accent: #3b5bdb; --accent-soft: #e7ecfd; --up: #11845b; --up-soft: #e3f4ec;
+    --down: #c73a32; --down-soft: #fbe9e7; --warn: #9a6200; --warn-soft: #fff3dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1115; --surface: #171a21; --text: #e9eaee; --muted: #9ca2ad; --line: #2b303b;
+      --accent: #8da2ff; --accent-soft: #1f2640; --up: #3ccf8e; --up-soft: #12271e;
+      --down: #ff7a70; --down-soft: #2e1714; --warn: #ffc56b; --warn-soft: #2d2412;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1115; --surface: #171a21; --text: #e9eaee; --muted: #9ca2ad; --line: #2b303b;
+    --accent: #8da2ff; --accent-soft: #1f2640; --up: #3ccf8e; --up-soft: #12271e;
+    --down: #ff7a70; --down-soft: #2e1714; --warn: #ffc56b; --warn-soft: #2d2412;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 16px 80px; }
+  header.hero { padding: 48px 0 24px; }
+  .eyebrow { color: var(--accent); font-weight: 600; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+  h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.15; margin: 8px 0 12px; }
+  .lead { font-size: 18px; color: var(--muted); margin: 0; }
+  h2 { font-size: 24px; margin: 56px 0 8px; scroll-margin-top: 16px; }
+  h2 .num { color: var(--accent); margin-right: 8px; }
+  h3 { font-size: 17px; margin: 22px 0 6px; }
+  p { margin: 8px 0; }
+  .muted { color: var(--muted); }
+  nav.toc { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 24px; }
+  @media (max-width: 560px) { nav.toc ol { columns: 1; } }
+  nav.toc a { color: var(--text); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin: 14px 0; min-width: 0; }
+  .card:has(> svg) { overflow-x: auto; }
+  .card > svg { min-width: 640px; }
+  .note { border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+  .note.info { background: var(--accent-soft); }
+  .note.good { background: var(--up-soft); }
+  .note.warn { background: var(--warn-soft); }
+  .note.bad { background: var(--down-soft); }
+  .note b:first-child { display: block; margin-bottom: 2px; }
+  .scroll { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  td:first-child { font-weight: 600; width: 30%; }
+  code, pre { background: var(--accent-soft); border-radius: 6px; font-size: 14px; }
+  code { padding: 1px 6px; }
+  pre { padding: 12px 14px; overflow-x: auto; line-height: 1.5; margin: 10px 0; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: var(--text); }
+  svg .muted { fill: var(--muted); }
+  .grid2 { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; margin: 14px 0; }
+  @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+  .grid2 > .card, .grid2 > .note { margin: 0; }
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 13px; background: var(--accent-soft); }
+  footer { margin-top: 64px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">crypto_ai · v2 архитектур</div>
+  <h1>Trading AI v2: олон зах зээл, олон хэрэглэгч</h1>
+  <p class="lead">6 төрлийн зах зээл, 5 хэрэглэгч, нэг сервер. Нэг тархи шийдвэр гаргаж, хүн бүрийн данс дээр тус тусдаа гүйцэтгэнэ. Шат дараатай, нэг нэгээр нь нэмнэ.</p>
+</header>
+
+<nav class="toc" aria-label="Агуулга">
+  <ol>
+    <li><a href="#caution">Эхлээд анхаарах зүйл</a></li>
+    <li><a href="#brain">Нэг тархи, олон гар</a></li>
+    <li><a href="#plugins">Зах зээл = залгуур</a></li>
+    <li><a href="#users">Хэрэглэгчид (.env)</a></li>
+    <li><a href="#dashboard">Dashboard ба цэс</a></li>
+    <li><a href="#learn">Өөрийгөө хөгжүүлэх</a></li>
+    <li><a href="#update">Аюулгүй шинэчлэх</a></li>
+    <li><a href="#infra">Өгөгдөл ба сервер</a></li>
+    <li><a href="#roadmap">Алхам алхмаар</a></li>
+    <li><a href="#ideas">Нэмэлт санаа</a></li>
+    <li><a href="#decisions">Таны шийдвэрүүд</a></li>
+  </ol>
+</nav>
+
+<!-- 1 -->
+<h2 id="caution"><span class="num">1</span>Эхлээд анхаарах 2 зүйл</h2>
+<div class="grid2">
+  <div class="note warn"><b>⚖️ Бусдын мөнгө = хуулийн асуудал</b>Demo үед асуудалгүй. 5 хүн бодит мөнгөөр, ялангуяа төлбөртэйгээр ашиглах нь Австралид <b>AFSL</b> лиценз шаардаж магадгүй. Хүн бүр өөрийн данс, өөрийн түлхүүрээр, эрсдэлээ ойлгосон байх ёстой. Live-аас өмнө хуульчтай зөвлөлдөнө.</div>
+  <div class="note warn"><b>🔒 5 хүний түлхүүр нэг серверт</b>Бүх түлхүүр <b>withdraw эрхгүй</b>, <b>серверийн IP-ээр хязгаарлагдсан</b> байна. Нууц үгийг зөвхөн hash хэлбэрээр хадгална.</div>
+</div>
+
+<!-- 2 -->
+<h2 id="brain"><span class="num">2</span>Гол санаа: нэг тархи, олон гар</h2>
+<div class="card">
+<svg viewBox="0 0 860 360" role="img" aria-label="Өгөгдлийн эх сурвалжууд зах зээл бүрийн тархи руу орж, тархи бүрийн шийдвэр хэрэглэгч бүрийн данс дээр тус тусдаа гүйцэтгэгдэнэ">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+    </marker>
+  </defs>
+  <g font-size="13" text-anchor="middle">
+    <text x="95" y="24" font-weight="700" font-size="14">📊 Өгөгдөл</text>
+    <rect x="20" y="40" width="150" height="44" rx="10" fill="var(--surface)" stroke="var(--line)"/><text x="95" y="67">Binance</text>
+    <rect x="20" y="100" width="150" height="44" rx="10" fill="var(--surface)" stroke="var(--line)"/><text x="95" y="127">OANDA</text>
+    <rect x="20" y="160" width="150" height="44" rx="10" fill="var(--surface)" stroke="var(--line)"/><text x="95" y="187">Мэдээ, COT, хүү</text>
+
+    <text x="390" y="24" font-weight="700" font-size="14">🧠 Тархи (зах зээл бүрт 1)</text>
+    <rect x="300" y="40" width="180" height="44" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="390" y="67">₿ Крипто тархи</text>
+    <rect x="300" y="100" width="180" height="44" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="390" y="127">💱 Валют тархи</text>
+    <rect x="300" y="160" width="180" height="44" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="390" y="187">🥇 Металл тархи …</text>
+    <rect x="300" y="250" width="180" height="56" rx="10" fill="var(--up-soft)" stroke="var(--up)"/><text x="390" y="274">📈 Сайжруулалт</text><text x="390" y="294" class="muted" font-size="12">зах зээл бүрт</text>
+
+    <text x="725" y="24" font-weight="700" font-size="14">✋ Гүйцэтгэгч (хүн бүрт)</text>
+    <rect x="620" y="40" width="210" height="40" rx="10" fill="var(--surface)" stroke="var(--line)"/><text x="725" y="65">👤 User1 · Binance</text>
+    <rect x="620" y="92" width="210" height="40" rx="10" fill="var(--surface)" stroke="var(--line)"/><text x="725" y="117">👤 User2 · Binance</text>
+    <rect x="620" y="144" width="210" height="40" rx="10" fill="var(--surface)" stroke="var(--line)"/><text x="725" y="169">👤 User1 · OANDA</text>
+    <rect x="620" y="196" width="210" height="40" rx="10" fill="var(--surface)" stroke="var(--line)"/><text x="725" y="221">👤 User3 · OANDA</text>
+    <rect x="620" y="262" width="210" height="44" rx="10" fill="var(--warn-soft)" stroke="var(--warn)"/><text x="725" y="289">🛡 Risk guard хүн бүрт</text>
+  </g>
+  <g stroke="var(--muted)" stroke-width="1.6" fill="none" marker-end="url(#arr)">
+    <path d="M172 62 H296"/><path d="M172 122 H296"/><path d="M172 182 C 230 182, 240 70, 296 66"/><path d="M172 182 C 230 182, 240 130, 296 126"/>
+    <path d="M482 62 H616"/><path d="M482 66 C 560 66, 560 112, 616 112"/>
+    <path d="M482 122 C 560 122, 560 164, 616 164"/><path d="M482 126 C 560 126, 560 216, 616 216"/>
+    <path d="M390 248 V208" stroke-dasharray="5 4"/>
+  </g>
+  <text x="430" y="342" text-anchor="middle" class="muted" font-size="13">Шийдвэр нэг ч position-ий хэмжээ хүн бүрийн өөрийн дансаар тооцогдоно ($500 → жижиг, $5000 → том)</text>
+</svg>
+</div>
+<div class="scroll"><table>
+  <thead><tr><th>Хэсэг</th><th>Хэдэн ширхэг</th><th>Яагаад</th></tr></thead>
+  <tbody>
+    <tr><td>🧠 Тархи</td><td>Зах зээл бүрт 1</td><td>"EUR/USD long" шийдвэр 5 хүнд ижил. 5 удаа тооцох шаардлагагүй, будлиан ч үүсэхгүй</td></tr>
+    <tr><td>✋ Гүйцэтгэгч</td><td>Хүн × зах зээл бүрт</td><td>Хүн бүрийн данс, мөнгөний хэмжээ өөр</td></tr>
+    <tr><td>📈 Сайжруулалт</td><td>Зах зээл бүрт 1</td><td>Валют валютаас, крипто криптогоос суралцана</td></tr>
+    <tr><td>🛡 Risk guard</td><td>Хүн бүрт</td><td>Нэг хүний алдагдал бусдын арилжааг зогсоохгүй</td></tr>
+  </tbody>
+</table></div>
+
+<!-- 3 -->
+<h2 id="plugins"><span class="num">3</span>Зах зээл бүр "залгуур"</h2>
+<p>6 зах зээл өөр бүтэцтэй ч бүгд <b>ижил хэлбэрийн залгуур</b> байна. Шинэ зах зээл нэмэх = шинэ залгуур залгах.</p>
+<pre>markets/
+├── crypto/        ← одоогийн бот энд шилжинэ
+│   ├── adapter.py     Binance-тай харилцах
+│   ├── sources.py     funding, long/short, Fear&amp;Greed…
+│   └── config.yaml    койнууд, 1ц лаа, 24/7, шимтгэл
+├── fx/            ← дараагийнх
+│   ├── adapter.py     OANDA
+│   ├── sources.py     хүүгийн зөрүү, COT, сесс…
+│   └── config.yaml    EUR/USD, AUD/USD…, Даваа–Баасан, spread
+├── metals/        ← OANDA-г дахин ашиглана
+├── commodities/   ← OANDA
+├── indices/       ← OANDA
+└── bonds/         ← OANDA CFD / бондын ETF</pre>
+<div class="scroll"><table>
+  <thead><tr><th>Залгуур хариулах асуулт</th><th>Крипто</th><th>Валют</th></tr></thead>
+  <tbody>
+    <tr><td>Ямар хэрэглүүр?</td><td>BTC, ETH…</td><td>EUR/USD, AUD/USD…</td></tr>
+    <tr><td>Одоо нээлттэй юу?</td><td>Үргэлж</td><td>Даваа–Баасан</td></tr>
+    <tr><td>Түүхэн лаа хаанаас?</td><td>Binance</td><td>OANDA</td></tr>
+    <tr><td>Нэмэлт эх сурвалж?</td><td>funding, F&amp;G…</td><td>хүү, COT, сесс…</td></tr>
+    <tr><td>Зардал?</td><td>0.02–0.05% шимтгэл</td><td>spread + swap</td></tr>
+    <tr><td>Захиалга?</td><td>Binance API</td><td>OANDA API</td></tr>
+  </tbody>
+</table></div>
+<div class="note good"><b>💡 Том хэмнэлт</b>OANDA нэг API-аар валют, металл, түүхий эд, индекс, бонд <b>5-ыг</b> хамардаг. Холбогчийг нэг удаа бичээд 5 зах зээлд ашиглана. Оноо, risk guard, допамин, walk-forward, vault, shadow, ML, Telegram, dashboard бүгд <b>бүх зах зээлд ижил</b>.</div>
+
+<!-- 4 -->
+<h2 id="users"><span class="num">4</span>Хэрэглэгчид: <code>.env</code> тохиргоо</h2>
+<p><code>USER1_</code>, <code>USER2_</code>… гэж нэмэхэд <b>автоматаар шинэ хэрэглэгч</b> бий болно.</p>
+<pre># ---- Хэрэглэгч 1 (та, админ) ----
+USER1_NAME=amar
+USER1_ROLE=admin
+USER1_MARKETS=crypto,fx
+USER1_TELEGRAM_CHAT_ID=...
+USER1_BINANCE_KEY=...
+USER1_BINANCE_SECRET=...
+USER1_OANDA_TOKEN=...
+USER1_OANDA_ACCOUNT=...
+
+# ---- Хэрэглэгч 2 ----
+USER2_NAME=bat
+USER2_MARKETS=fx
+USER2_OANDA_TOKEN=...
+USER2_OANDA_ACCOUNT=...
+USER2_RISK_PER_TRADE=0.005   # 1%-иас бага байж болно, их байж болохгүй</pre>
+<div class="grid2">
+  <div class="card"><b>⚙️ Ажиллах зарчим</b><p class="muted">5 минут тутам <code>.env</code>-ийг шалгаж, шинэ <code>USER3_</code> олдвол танд мэдэгдээд автоматаар асаана. Хүн бүр зөвхөн түлхүүрээ оруулсан зах зээлдээ арилжаална.</p></div>
+  <div class="card"><b>🔑 Нууц үг</b><p class="muted"><code>.env</code>-д бичигдэхгүй. <code>main.py user password bat</code> командаар тохируулж, hash хэлбэрээр хадгална.</p></div>
+  <div class="card"><b>👑 admin</b><p class="muted">Бүх хэрэглэгч, бүх зах зээл, системийн тохиргоо</p></div>
+  <div class="card"><b>👤 user</b><p class="muted">Зөвхөн өөрийн данс, өөрийн арилжаа</p></div>
+</div>
+
+<!-- 5 -->
+<h2 id="dashboard"><span class="num">5</span>Dashboard: нэвтрэлт + цэс</h2>
+<div class="card">
+<svg viewBox="0 0 860 120" role="img" aria-label="Dashboard-ийн дээд цэс: Нүүр, Крипто, Валют, Металл, Түүхий эд, Индекс, Бонд, Тайлан, Тохиргоо, Админ">
+  <rect x="10" y="20" width="840" height="64" rx="12" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="30" y="58" font-size="16" font-weight="700">🤖 Trading AI</text>
+  <g font-size="13">
+    <rect x="150" y="36" width="64" height="32" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="182" y="57" text-anchor="middle">Нүүр</text>
+    <text x="250" y="57" text-anchor="middle">₿ Крипто</text><text x="322" y="57" text-anchor="middle">💱 Валют</text>
+    <text x="396" y="57" text-anchor="middle">🥇 Металл</text><text x="480" y="57" text-anchor="middle">🛢 Түүхий эд</text>
+    <text x="560" y="57" text-anchor="middle">📈 Индекс</text><text x="628" y="57" text-anchor="middle">📜 Бонд</text>
+    <text x="696" y="57" text-anchor="middle">📊 Тайлан</text><text x="776" y="57" text-anchor="middle">⚙️ · 👑 amar ▾</text>
+  </g>
+  <text x="430" y="110" text-anchor="middle" class="muted" font-size="12">Утсан дээр цэс нь ☰ товч болно</text>
+</svg>
+</div>
+<div class="scroll"><table>
+  <thead><tr><th>Хуудас</th><th>Юу харуулах вэ</th></tr></thead>
+  <tbody>
+    <tr><td>🏠 Нүүр</td><td>Бүх зах зээлийн нийт дүн, өнөөдрийн ашиг/алдагдал, нээлттэй position</td></tr>
+    <tr><td>₿ Крипто, 💱 Валют…</td><td>Зах зээл тус бүрийн dashboard: график, арилжаа, shadow, допамин</td></tr>
+    <tr><td>📊 Тайлан</td><td>7 хоног/сарын дүн, AI дүгнэлт, зах зээлүүдийн харьцуулалт</td></tr>
+    <tr><td>⚙️ Тохиргоо</td><td>Telegram холбох, нууц үг солих, бот зогсоох/эхлүүлэх</td></tr>
+    <tr><td>👑 Админ</td><td>(зөвхөн танд) Бүх хэрэглэгч, серверийн төлөв, сайжруулалт, алдааны лог</td></tr>
+    <tr><td>🌍 Нийтийн хуудас</td><td>Хүмүүст харуулах, нэвтрэлтгүй, данс/үлдэгдэлгүй ерөнхий үзүүлэлт</td></tr>
+  </tbody>
+</table></div>
+<p class="muted">Нэвтрэлт: username + password, HTTPS, 5 удаа буруу оруулбал түр түгжинэ.</p>
+
+<!-- 6 -->
+<h2 id="learn"><span class="num">6</span>Өөрийгөө хөгжүүлэх ба шинийг хайх</h2>
+<div class="scroll"><table>
+  <thead><tr><th>Механизм</th><th>Тайлбар</th></tr></thead>
+  <tbody>
+    <tr><td>Зах зээл бүр өөрөө суралцана</td><td>Тус бүр өөрийн жин, pattern, допамин, walk-forward → vault → shadow</td></tr>
+    <tr><td>Хуваалцсан мэдлэг</td><td>Нэг зах зээлд ажилласан стратеги бусад зах зээлд автоматаар туршигдана</td></tr>
+    <tr><td>Судалгааны AI</td><td>Reddit-ээс гадна валют, алтны нийтлэлээс шинэ стратеги хайна</td></tr>
+    <tr><td>Шинэ эх сурвалжийн шалгалт</td><td>Нэмсэн мэдээлэл ботыг сайжруулж байна уу гэдгийг автоматаар хэмжинэ</td></tr>
+    <tr><td>Сарын судалгааны тайлан</td><td>AI: юу сурсан, юу ажиллаагүй, юуг туршиж үзэх вэ</td></tr>
+  </tbody>
+</table></div>
+
+<!-- 7 -->
+<h2 id="update"><span class="num">7</span>Ажиллаж байхад нь аюулгүй шинэчлэх</h2>
+<div class="card">
+<svg viewBox="0 0 860 170" role="img" aria-label="Шинэчлэх дараалал: код өөрчлөх, автомат тест, серверт гаргах, зөвхөн тухайн зах зээлийг дахин асаах; асуудал гарвал буцаах">
+  <g font-size="13" text-anchor="middle">
+    <rect x="10" y="40" width="150" height="60" rx="12" fill="var(--surface)" stroke="var(--line)"/><text x="85" y="66" font-weight="700">✏️ Код өөрчлөх</text><text x="85" y="86" class="muted" font-size="12">Git (GitHub)</text>
+    <rect x="200" y="40" width="160" height="60" rx="12" fill="var(--warn-soft)" stroke="var(--warn)"/><text x="280" y="66" font-weight="700">🧪 Автомат тест</text><text x="280" y="86" class="muted" font-size="12">risk guard, backtest</text>
+    <rect x="400" y="40" width="160" height="60" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="480" y="66" font-weight="700">🚀 deploy fx</text><text x="480" y="86" class="muted" font-size="12">зөвхөн валют асна</text>
+    <rect x="600" y="40" width="160" height="60" rx="12" fill="var(--up-soft)" stroke="var(--up)"/><text x="680" y="66" font-weight="700">✅ Ажиллаж байна</text><text x="680" y="86" class="muted" font-size="12">бусад нь тасраагүй</text>
+    <text x="480" y="150" fill="var(--down)" font-size="13">↩️ асуудал гарвал: rollback fx (1 минут)</text>
+  </g>
+  <g stroke="var(--muted)" stroke-width="1.8" fill="none" marker-end="url(#arr)">
+    <path d="M162 70 H196"/><path d="M362 70 H396"/><path d="M562 70 H596"/>
+    <path d="M680 102 C 680 135, 600 140, 560 140"/>
+  </g>
+</svg>
+</div>
+<div class="grid2">
+  <div class="card"><b>1. Git + GitHub</b><p class="muted">Бүх өөрчлөлт хадгалагдаж, хэзээ ч буцаах боломжтой</p></div>
+  <div class="card"><b>2. Зах зээл бүр тусдаа service</b><p class="muted">crypto-brain, fx-brain, web, scheduler. Нэг нь унасан ч бусад нь ажиллана</p></div>
+  <div class="card"><b>3. Автомат тест</b><p class="muted">Risk guard зөв үү, backtest гэнэт өөрчлөгдсөн үү</p></div>
+  <div class="card"><b>4. Хувилбарын тэмдэглэгээ</b><p class="muted">Арилжаа бүр ямар код, ямар стратегиар хийгдсэнийг хадгална</p></div>
+  <div class="card"><b>5. Стратеги = shadow-оор</b><p class="muted">Шинэ стратеги шууд идэвхждэггүй, эхлээд shadow болж туршигдана</p></div>
+  <div class="card"><b>6. Тохиргоо ≠ код</b><p class="muted">Хэрэглүүр нэмэх, timeframe солих нь <code>config.yaml</code>-д. Код өөрчлөхгүй</p></div>
+</div>
+
+<!-- 8 -->
+<h2 id="infra"><span class="num">8</span>Өгөгдөл ба сервер</h2>
+<div class="scroll"><table>
+  <thead><tr><th></th><th>Одоо</th><th>v2</th></tr></thead>
+  <tbody>
+    <tr><td>Өгөгдлийн сан</td><td>SQLite (1 файл)</td><td><b>PostgreSQL</b>: олон service зэрэг бичихэд найдвартай</td></tr>
+    <tr><td>Нөөцлөлт</td><td>Байхгүй</td><td>Өдөр бүр автомат</td></tr>
+    <tr><td>Сервер</td><td>4 CPU / 8GB ($48)</td><td>Валютад хангалттай. 4+ зах зээлд 8 CPU / 16GB ($96)</td></tr>
+    <tr><td>Хяналт</td><td>Telegram</td><td>+ CPU, RAM, алдааны мэдэгдэл админд</td></tr>
+  </tbody>
+</table></div>
+
+<!-- 9 -->
+<h2 id="roadmap"><span class="num">9</span>Алхам алхмаар (12-р сар хүртэл)</h2>
+<div class="note info"><b>Зарчим</b>Нэг дор нэг л зүйл нэмж, тус бүрийг шалгаад дараагийнх руу шилжинэ. Ажиллаж буй крипто demo-г 10/24-ний дүгнэлт хүртэл эвдэхгүй.</div>
+<div class="card">
+<svg viewBox="0 0 860 330" role="img" aria-label="Хугацааны шугам: 0-р шат суурь 10/12–18, 1-р шат хэрэглэгч ба dashboard 10/19–25, 10/24 крипто дүгнэлт, 2-р шат крипто v2 руу, 3-р шат валют судалгаа, 4-р шат валют demo, 5-р шат металл, 6-7-р шат индекс, түүхий эд, бонд">
+  <line x1="40" y1="40" x2="40" y2="310" stroke="var(--line)" stroke-width="3"/>
+  <g font-size="13">
+    <circle cx="40" cy="50" r="8" fill="var(--accent)"/><text x="60" y="46" font-weight="700">0. Суурь</text><text x="60" y="64" class="muted">10/12–10/18 · Git, шинэ бүтэц, залгуурын стандарт, тест</text>
+    <circle cx="40" cy="92" r="8" fill="var(--accent)"/><text x="60" y="88" font-weight="700">1. Хэрэглэгч + Dashboard</text><text x="60" y="106" class="muted">10/19–10/25 · PostgreSQL, USER1_…, нэвтрэлт, цэс</text>
+    <circle cx="40" cy="134" r="8" fill="var(--warn)"/><text x="60" y="130" font-weight="700" fill="var(--warn)">📅 10/24 · Криптогийн 14 хоногийн дүгнэлт</text>
+    <circle cx="40" cy="170" r="8" fill="var(--accent)"/><text x="60" y="166" font-weight="700">2. Крипто → v2</text><text x="60" y="184" class="muted">10/25–10/27 · ажиллаж буй ботыг шинэ бүтэц рүү</text>
+    <circle cx="40" cy="212" r="8" fill="var(--up)"/><text x="60" y="208" font-weight="700">3. Валют: судалгаа</text><text x="60" y="226" class="muted">10/28–11/03 · OANDA, backtest, 4 шинэ эх сурвалж нэг нэгээр</text>
+    <circle cx="40" cy="254" r="8" fill="var(--up)"/><text x="60" y="250" font-weight="700">4. Валют: demo</text><text x="60" y="268" class="muted">11/04 → 11-р сарын сүүл · бусад хэрэглэгчид нэгдэнэ</text>
+    <circle cx="40" cy="296" r="8" fill="var(--muted)"/><text x="60" y="292" font-weight="700">5–7. Металл → Индекс, түүхий эд → Бонд</text><text x="60" y="310" class="muted">11-р сарын дунд → 12-р сар+</text>
+  </g>
+</svg>
+</div>
+<div class="scroll"><table>
+  <thead><tr><th>Шат</th><th>Дуусгавар болох нөхцөл</th></tr></thead>
+  <tbody>
+    <tr><td>0. Суурь</td><td>Шинэ бүтцэд крипто backtest хуучинтай <b>яг ижил</b> үр дүн гаргана</td></tr>
+    <tr><td>1. Хэрэглэгч + Dashboard</td><td>Та болон туршилтын 2-р хэрэглэгч нэвтэрч, өөр өөрийн дансаа харна</td></tr>
+    <tr><td>2. Крипто → v2</td><td>v2 дээр 3 хоног алдаагүй ажиллана</td></tr>
+    <tr><td>3. Валют: судалгаа</td><td>Vault-ийн үр дүн гарна (эерэг ч бай, сөрөг ч бай)</td></tr>
+    <tr><td>4. Валют: demo</td><td>3–4 долоо хоногийн бодит дүн</td></tr>
+    <tr><td>5–7. Бусад</td><td>Тус бүр backtest → demo, 2–4 долоо хоног ажиглана</td></tr>
+  </tbody>
+</table></div>
+
+<!-- 10 -->
+<h2 id="ideas"><span class="num">10</span>Нэмэлт санаанууд</h2>
+<div class="grid2">
+  <div class="card"><b>🧮 Хүн бүрийн нийт эрсдэл</b><p class="muted">Крипто + валют + алт хамтдаа нийт 5%-аас хэтрэхгүй. Зах зээл хоорондын хамаарлыг тооцно</p></div>
+  <div class="card"><b>🛑 Хоёр шатлалтай kill switch</b><p class="muted">Хүн бүрийнх + бүх системийн <code>/emergency</code></p></div>
+  <div class="card"><b>🎓 Төгсөлтийн шалгалт</b><p class="muted">Demo → live: 50+ арилжаа, эерэг vault, 4 долоо хоногийн дүн</p></div>
+  <div class="card"><b>🌍 Нийтийн гүйцэтгэлийн хуудас</b><p class="muted">Хүмүүст харуулах, хувийн мэдээлэлгүй</p></div>
+  <div class="card"><b>🤖 AI нэг дор</b><p class="muted">Ollama-г бүх зах зээл дараалалтай хуваалцана. Чухал ажилд Claude</p></div>
+</div>
+
+<!-- 11 -->
+<h2 id="decisions"><span class="num">11</span>Таны шийдвэрүүд</h2>
+<div class="scroll"><table>
+  <thead><tr><th>Шийдвэр</th><th>Санал</th></tr></thead>
+  <tbody>
+    <tr><td>GitHub private repository</td><td>✅ Үүсгэх. Код аюулгүй, шинэчлэхэд хялбар</td></tr>
+    <tr><td>OANDA demo данс</td><td>~10/28-аас өмнө нээх (3-р шат)</td></tr>
+    <tr><td>Бусад хэрэглэгчид</td><td>Эхэндээ та + туршилтын 1 хэрэглэгч</td></tr>
+  </tbody>
+</table></div>
+
+<footer>crypto_ai · v2 төлөвлөгөө · бичсэн 2026-10-12 · Хугацаа нь ойролцоо бөгөөд шат бүрийн дүнгээс хамаарч өөрчлөгдөж болно. Санхүүгийн зөвлөгөө биш.</footer>
+</div>
+</body>
+</html>

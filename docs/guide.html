@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trading AI гарын авлага</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --text: #1b1d22; --muted: #646a75; --line: #e3e4e8;
+    --accent: #3b5bdb; --accent-soft: #e7ecfd; --up: #11845b; --up-soft: #e3f4ec;
+    --down: #c73a32; --down-soft: #fbe9e7; --warn: #9a6200; --warn-soft: #fff3dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1115; --surface: #171a21; --text: #e9eaee; --muted: #9ca2ad; --line: #2b303b;
+      --accent: #8da2ff; --accent-soft: #1f2640; --up: #3ccf8e; --up-soft: #12271e;
+      --down: #ff7a70; --down-soft: #2e1714; --warn: #ffc56b; --warn-soft: #2d2412;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1115; --surface: #171a21; --text: #e9eaee; --muted: #9ca2ad; --line: #2b303b;
+    --accent: #8da2ff; --accent-soft: #1f2640; --up: #3ccf8e; --up-soft: #12271e;
+    --down: #ff7a70; --down-soft: #2e1714; --warn: #ffc56b; --warn-soft: #2d2412;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px 80px; }
+  header.hero { padding: 48px 0 24px; }
+  .eyebrow { color: var(--accent); font-weight: 600; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+  h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.15; margin: 8px 0 12px; }
+  .lead { font-size: 18px; color: var(--muted); margin: 0; }
+  h2 { font-size: 24px; margin: 56px 0 8px; scroll-margin-top: 16px; }
+  h2 .num { color: var(--accent); margin-right: 8px; }
+  h3 { font-size: 17px; margin: 24px 0 6px; }
+  p { margin: 8px 0; }
+  .muted { color: var(--muted); }
+  nav.toc { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin: 8px 0 0; }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 24px; }
+  @media (max-width: 560px) { nav.toc ol { columns: 1; } }
+  nav.toc a { color: var(--text); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin: 14px 0; }
+  .note { border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+  .note.info { background: var(--accent-soft); }
+  .note.good { background: var(--up-soft); }
+  .note.warn { background: var(--warn-soft); }
+  .note.bad { background: var(--down-soft); }
+  .note b:first-child { display: block; margin-bottom: 2px; }
+  .scroll { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  td:first-child { font-weight: 600; width: 34%; }
+  /* diagrams keep a readable size on phones and scroll sideways inside their card */
+  .card:has(> svg) { overflow-x: auto; }
+  .card > svg { min-width: 600px; }
+  code { background: var(--accent-soft); padding: 1px 6px; border-radius: 5px; font-size: 14px; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: var(--text); }
+  svg .muted { fill: var(--muted); }
+  .up { color: var(--up); } .down { color: var(--down); }
+  .grid2 { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+  .grid2 { margin: 14px 0; }
+  .grid2 > .card, .grid2 > .note { margin: 0; }
+  .term dt { font-weight: 700; margin-top: 10px; }
+  .term dd { margin: 0 0 4px 0; color: var(--muted); }
+  footer { margin-top: 64px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">crypto_ai · гарын авлага</div>
+  <h1>Таны Trading AI хэрхэн ажилладаг вэ</h1>
+  <p class="lead">Бот цаг бүр зах зээлийн мэдээллийг цуглуулж <b>оноо</b> бодно. Оноо хангалттай өндөр бол <b>хатуу хязгаар дотор</b> арилжаа нээнэ. Үр дүнгээсээ <b>шагнал</b> авч, өдөр бүр өөрийгөө <b>шалгалттайгаар</b> сайжруулна.</p>
+</header>
+
+<nav class="toc" aria-label="Агуулга">
+  <ol>
+    <li><a href="#overview">Ерөнхий зураг</a></li>
+    <li><a href="#see">Бот юуг хардаг вэ</a></li>
+    <li><a href="#think">Шийдвэр гаргах</a></li>
+    <li><a href="#guard">Risk Guard</a></li>
+    <li><a href="#trade">Арилжаа хэрхэн явагддаг</a></li>
+    <li><a href="#dopamine">Допамин</a></li>
+    <li><a href="#improve">Өөрийгөө сайжруулах</a></li>
+    <li><a href="#carry">Funding carry</a></li>
+    <li><a href="#schedule">Хэзээ юу хийдэг вэ</a></li>
+    <li><a href="#tools">Таны хэрэгслүүд</a></li>
+    <li><a href="#files">Файлууд</a></li>
+    <li><a href="#terms">Нэр томьёо</a></li>
+    <li><a href="#honest">Шударга дүгнэлт</a></li>
+  </ol>
+</nav>
+
+<!-- 1 -->
+<h2 id="overview"><span class="num">1</span>Ерөнхий зураг</h2>
+<p>Бот 5 алхмыг тасралтгүй давтана. Сүүлийн алхам нь эхний алхам руу буцаж ордог тул бот цаг хугацааны явцад өөрчлөгддөг.</p>
+<div class="card">
+<svg viewBox="0 0 800 230" role="img" aria-label="Харах, бодох, шалгах, хийх, суралцах гэсэн 5 алхмын давталт">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+    </marker>
+  </defs>
+  <g font-size="15" text-anchor="middle">
+    <rect x="10" y="40" width="128" height="86" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+    <text x="74" y="74" font-size="24">👀</text><text x="74" y="100" font-weight="700">Харах</text>
+    <text x="74" y="118" class="muted" font-size="12">14 эх сурвалж</text>
+
+    <rect x="172" y="40" width="128" height="86" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+    <text x="236" y="74" font-size="24">🧠</text><text x="236" y="100" font-weight="700">Бодох</text>
+    <text x="236" y="118" class="muted" font-size="12">оноо бодно</text>
+
+    <rect x="334" y="40" width="128" height="86" rx="12" fill="var(--warn-soft)" stroke="var(--warn)"/>
+    <text x="398" y="74" font-size="24">🛡</text><text x="398" y="100" font-weight="700">Шалгах</text>
+    <text x="398" y="118" class="muted" font-size="12">risk guard</text>
+
+    <rect x="496" y="40" width="128" height="86" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+    <text x="560" y="74" font-size="24">✋</text><text x="560" y="100" font-weight="700">Хийх</text>
+    <text x="560" y="118" class="muted" font-size="12">захиалга тавина</text>
+
+    <rect x="658" y="40" width="132" height="86" rx="12" fill="var(--up-soft)" stroke="var(--up)"/>
+    <text x="724" y="74" font-size="24">📈</text><text x="724" y="100" font-weight="700">Суралцах</text>
+    <text x="724" y="118" class="muted" font-size="12">шагнал, сайжруулалт</text>
+  </g>
+  <g stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#arr)">
+    <path d="M140 83 H168"/><path d="M302 83 H330"/><path d="M464 83 H492"/><path d="M626 83 H654"/>
+    <path d="M724 128 V180 H74 V130"/>
+  </g>
+  <text x="400" y="204" text-anchor="middle" class="muted" font-size="13">сурсан зүйлээ дараагийн шийдвэртээ ашиглана</text>
+</svg>
+</div>
+
+<!-- 2 -->
+<h2 id="see"><span class="num">2</span>Бот юуг хардаг вэ</h2>
+<p>Эх сурвалж бүрийг <b>−1-ээс +1</b> хүртэлх тоо болгоно. <span class="up">Нэмэх</span> нь "үнэ өснө" (long), <span class="down">хасах</span> нь "үнэ унана" (short) гэсэн утгатай.</p>
+<div class="scroll"><table>
+  <thead><tr><th>Эх сурвалж</th><th>Энгийн тайлбар</th></tr></thead>
+  <tbody>
+    <tr><td>Trend (EMA)</td><td>Сүүлийн үеийн дундаж үнэ урт хугацааны дунджаас дээр байна уу, доор байна уу</td></tr>
+    <tr><td>Momentum (RSI)</td><td>Үнэ сүүлийн үед хэр хүчтэй өссөн эсвэл унасан бэ</td></tr>
+    <tr><td>MACD</td><td>Хурд нь нэмэгдэж байна уу, саарч байна уу</td></tr>
+    <tr><td>Breakout</td><td>Сүүлийн 24 цагийн дээд/доод цэгээ эвдсэн үү</td></tr>
+    <tr><td>4 цаг / 1 өдрийн trend</td><td>"Том зураг". Бот хүчтэй том trend-ийн эсрэг орохгүй</td></tr>
+    <tr><td>Chart pattern</td><td>Engulfing, pin bar, double top гэх мэт 6 хэв. Аль нь бодитоор ажилладгийг бот өөрөө хэмждэг</td></tr>
+    <tr><td>Стратегийн сан</td><td>Сонгодог болон интернэтээс олсон, шалгалт давсан стратегиудын "санал"</td></tr>
+    <tr><td>Funding rate</td><td>Long-ууд short-уудад мөнгө төлж байвал олон хүн хэт long байна гэсэн үг тул эсрэгээр нь уншина</td></tr>
+    <tr><td>Long/short ratio</td><td>Binance дээрх энгийн хүмүүсийн хэдэн хувь нь long байна вэ (мөн эсрэгээр нь уншина)</td></tr>
+    <tr><td>Top trader-ууд</td><td>Том арилжаачид юу хийж байна вэ</td></tr>
+    <tr><td>Open interest</td><td>Зах зээлд шинэ мөнгө орж байна уу</td></tr>
+    <tr><td>Fear &amp; Greed</td><td>Зах зээл айсан уу, шуналтай байна уу</td></tr>
+    <tr><td>Мэдээ (AI)</td><td>Ollama 5 сайтын мэдээг уншиж койн бүрээр эерэг/сөрөг гэж үнэлнэ</td></tr>
+    <tr><td>Regime</td><td>Зах зээл trend-тэй байна уу, хажуу тийш (range) хөдөлж байна уу</td></tr>
+  </tbody>
+</table></div>
+<div class="note info"><b>Эсрэгээр унших (contrarian) гэж юу вэ?</b>Хэт олон хүн нэг тал руу хазайвал зах зээл ихэвчлэн эсрэг тийш эргэдэг. Тиймээс эдгээр дохиог "олонхыг дагах" биш, "олонхоос болгоомжлох" байдлаар ашиглана.</div>
+
+<!-- 3 -->
+<h2 id="think"><span class="num">3</span>Шийдвэр гаргах</h2>
+<p>Эх сурвалж бүрийг <b>жингээр</b> нь үржүүлээд нэмнэ:</p>
+<p style="text-align:center"><code>оноо = trend×жин + RSI×жин + мэдээ×жин + … (14 бүгд)</code></p>
+<div class="card">
+<svg viewBox="0 0 800 170" role="img" aria-label="Онооны шугам: босгоос доош бол short, дээш бол long, хооронд нь арилжаа хийхгүй. ETH-ийн оноо −1.10 short талд байна">
+  <rect x="40" y="60" width="240" height="34" fill="var(--down-soft)" stroke="var(--down)"/>
+  <rect x="280" y="60" width="240" height="34" fill="var(--surface)" stroke="var(--line)"/>
+  <rect x="520" y="60" width="240" height="34" fill="var(--up-soft)" stroke="var(--up)"/>
+  <g text-anchor="middle" font-size="15" font-weight="700">
+    <text x="160" y="82" fill="var(--down)">SHORT</text>
+    <text x="400" y="82" class="muted">арилжаа хийхгүй</text>
+    <text x="640" y="82" fill="var(--up)">LONG</text>
+  </g>
+  <g text-anchor="middle" font-size="13" class="muted">
+    <text x="280" y="116" class="muted">−босго</text><text x="400" y="116" class="muted">0</text><text x="520" y="116" class="muted">+босго</text>
+  </g>
+  <line x1="248" y1="40" x2="248" y2="98" stroke="var(--text)" stroke-width="3"/>
+  <circle cx="248" cy="40" r="6" fill="var(--text)"/>
+  <text x="248" y="28" text-anchor="middle" font-size="14" font-weight="700">ETH: −1.10</text>
+  <text x="400" y="150" text-anchor="middle" font-size="13" class="muted">Жишээ: ETH-ийн trend −1.0, том зургийн trend −0.95 байсан тул short хийхээр шийдсэн</text>
+</svg>
+</div>
+<p><b>Жингүүдийг хэн тогтоох вэ?</b> Бот өөрөө. Жишээ нь "мэдээ хэр чухал вэ", "RSI хэр чухал вэ" гэдгийг түүхэн өгөгдөл дээр туршиж олдог (<a href="#improve">7-р хэсэг</a>).</p>
+<div class="grid2">
+  <div class="card"><b>📈 Trend зах зээл</b><p class="muted">Trend-ийг дагана.</p></div>
+  <div class="card"><b>↔️ Range зах зээл</b><p class="muted">Trend дохиог бага итгэж, "хэт өссөн бол буцаж унана" гэж үзнэ.</p></div>
+  <div class="card"><b>🌪 Хэт хэлбэлзэлтэй</b><p class="muted">Огт арилжаа хийхгүй.</p></div>
+  <div class="card"><b>🔭 Том зураг</b><p class="muted">4 цаг, 1 өдрийн хүчтэй trend-ийн эсрэг хэзээ ч орохгүй.</p></div>
+</div>
+
+<!-- 4 -->
+<h2 id="guard"><span class="num">4</span>Risk Guard: хатуу хязгаар</h2>
+<div class="note warn"><b>AI эдгээрийг өөрчилж чадахгүй.</b>Зөвхөн та <code>bot/risk_guard.py</code> файлыг гараар засаж өөрчилнө. Backtest-ийн арилжаа хүртэл энэ шүүлтүүрийг дамждаг.</div>
+<div class="scroll"><table>
+  <thead><tr><th>Дүрэм</th><th>Утга</th></tr></thead>
+  <tbody>
+    <tr><td>Нэг арилжааны эрсдэл</td><td>Equity-ийн <b>1%</b> ($5000 бол $50)</td></tr>
+    <tr><td>Нийт нээлттэй эрсдэл</td><td><b>2.5%</b></td></tr>
+    <tr><td>Leverage</td><td>≤ <b>2x</b></td></tr>
+    <tr><td>Нэгэн зэрэг</td><td>≤ <b>2</b> position, өдөрт ≤ <b>6</b> арилжаа</td></tr>
+    <tr><td>BTC, ETH хамт</td><td>Ижил чиглэлийн хоёр дахь нь <b>хагас</b> эрсдэлтэй (хамт хөдөлдөг тул)</td></tr>
+    <tr><td>Өдрийн алдагдал −5%</td><td>🛑 Бүгдийг хааж, маргааш (UTC) хүртэл зогсоно</td></tr>
+    <tr><td>Оргилоосоо −10% / −20%</td><td>Эрсдэл хагас / дөрөвний нэг болно</td></tr>
+    <tr><td>Оргилоосоо −30%</td><td>Бүрэн зогсож, таныг хүлээнэ (<code>/resetpeak</code>)</td></tr>
+    <tr><td>CPI, FOMC зэрэг</td><td>±60 минутын хооронд шинэ арилжаа нээхгүй</td></tr>
+    <tr><td>Stop-loss</td><td><b>Заавал</b>, биржид байна. Алга болвол дахин тавина</td></tr>
+  </tbody>
+</table></div>
+<div class="note info"><b>"1% эрсдэл" гэж юу гэсэн үг вэ?</b>Position-ий хэмжээ тогтмол биш. Stop хол байвал жижиг, ойр байвал том position нээнэ. Ингэснээр stop цохиход яг 1%-ийг л алдана.</div>
+
+<!-- 5 -->
+<h2 id="trade"><span class="num">5</span>Арилжаа хэрхэн явагддаг вэ</h2>
+<h3>Орох</h3>
+<p>Бот одоогийн үнээс бага зэрэг ашигтай үнээр <b>limit захиалга</b> тавиад 1 цаг хүлээнэ. Биелэхгүй бол цуцална. Яагаад limit гэж? Шимтгэл нь <b>0.05% → 0.02%</b> болж буурдаг. Ашиг багатай стратегийн хувьд энэ ялгаа маш чухал.</p>
+<h3>Биелмэгц биржид 3 захиалга тавина (long-ийн жишээ)</h3>
+<div class="card">
+<svg viewBox="0 0 800 300" role="img" aria-label="Long position-ий захиалгууд: орсон үнээс доош stop −1R, дээш хагас TP +1R, бүтэн TP +2R. +1R хүрэхэд stop орсон үнэ рүү шилжинэ">
+  <g font-size="14">
+    <line x1="60" y1="50" x2="560" y2="50" stroke="var(--up)" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="575" y="45" font-weight="700" fill="var(--up)">TP · +2R</text>
+    <text x="575" y="63" class="muted" font-size="12">үлдсэн хагасыг хаана</text>
+
+    <line x1="60" y1="110" x2="560" y2="110" stroke="var(--up)" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="575" y="105" font-weight="700" fill="var(--up)">Хагас TP · +1R</text>
+    <text x="575" y="123" class="muted" font-size="12">хагасыг хааж, stop-ыг дээш</text>
+
+    <line x1="60" y1="170" x2="560" y2="170" stroke="var(--text)" stroke-width="3"/>
+    <text x="575" y="175" font-weight="700">Орсон үнэ</text>
+
+    <line x1="60" y1="230" x2="560" y2="230" stroke="var(--down)" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="575" y="225" font-weight="700" fill="var(--down)">Stop-loss · −1R</text>
+    <text x="575" y="243" class="muted" font-size="12">алдагдлыг хязгаарлана</text>
+  </g>
+  <polyline fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"
+    points="60,170 110,182 160,160 210,150 260,128 300,108 340,118 390,92 440,98 490,70 540,52"/>
+  <circle cx="300" cy="108" r="6" fill="var(--up)"/>
+  <path d="M300 230 C 300 205, 300 190, 300 176" stroke="var(--warn)" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+  <text x="312" y="205" font-size="12" fill="var(--warn)">stop → орсон үнэ (breakeven)</text>
+  <text x="60" y="285" font-size="13" class="muted">Эдгээр захиалга биржид байдаг тул лаптоп унтраастай байсан ч ажиллана.</text>
+</svg>
+</div>
+<p><b>R</b> бол эрсдэлийн нэгж. 1R = орсон үнээс stop хүртэлх зай. "+2R ашиг" гэдэг нь эрсдэлийнхээ 2 дахин ашиг гэсэн үг. Үнэ +1R хүрэхэд stop орсон үнэ рүү шилжих тул үүнээс хойш уг арилжаа бараг алдагдалгүй болно.</p>
+<p><b>Бот өөрөө хаах тохиолдол:</b> дохио эсрэг тийш эргэвэл (<code>flip</code>), эсвэл хэт удаан эзэмшсэн бол (<code>time</code>).</p>
+
+<!-- 6 -->
+<h2 id="dopamine"><span class="num">6</span>Допамин: шагналын систем</h2>
+<p>Арилжаа хаагдах бүрт бот <b>шагнал</b> авна:</p>
+<div class="scroll"><table>
+  <thead><tr><th>Тохиолдол</th><th>Шагнал</th><th>Яагаад</th></tr></thead>
+  <tbody>
+    <tr><td>+2R, TP-ээр хаагдсан</td><td class="up"><b>+2.25</b></td><td>Ашиг + дүрэм баримталсны бонус</td></tr>
+    <tr><td>−1R, stop-оор хаагдсан</td><td class="down"><b>−0.75</b></td><td>Алдсан ч дүрмээ баримталсан</td></tr>
+    <tr><td>Stop-гүй байсан</td><td class="down"><b>−2</b></td><td>Хамгийн том шийтгэл</td></tr>
+  </tbody>
+</table></div>
+<p><b>Допамин</b> нь сүүлийн шагналуудын дундаж: 😄 урам орсон · 🙂 тайван · 😐 болгоомжтой · 😟 шинэ арга хайж байна.</p>
+<div class="grid2">
+  <div class="note info"><b>Яагаад ашгаар биш R-ээр хэмждэг вэ?</b>Ашгаар шагнавал бот "том бооцоо = илүү шагнал" гэж сурна. R-ээр шагнахад бооцооны хэмжээ ямар ч ялгаа гаргахгүй, зөвхөн <b>зөв шийдвэр</b> чухал болно.</div>
+  <div class="note good"><b>Допамин юунд нөлөөлдөг вэ?</b>Зөвхөн хайлтад. Өндөр бол бага өөрчилнө, бага бол илүү өргөн хүрээнд шинэ арга хайна. <b>Position-ий хэмжээнд хэзээ ч нөлөөлөхгүй.</b></div>
+</div>
+
+<!-- 7 -->
+<h2 id="improve"><span class="num">7</span>Өөрийгөө сайжруулах</h2>
+<p>Хамгийн том аюул бол <b>overfitting</b> буюу "өнгөрсөнд гайхалтай, ирээдүйд муу" стратеги. Шалгалтын хариултыг цээжилсэн сурагчтай адил. Үүнээс хамгаалах <b>3 шалгалт</b> бий:</p>
+<div class="card">
+<svg viewBox="0 0 800 330" role="img" aria-label="Шалгалтын юүлүүр: 250 тохиргоо, walk-forward шалгалтаар 10, vault шалгалтаар 2, shadow туршилтаар 1 нь идэвхтэй болно">
+  <g text-anchor="middle">
+    <path d="M100 20 H700 L640 90 H160 Z" fill="var(--accent-soft)" stroke="var(--accent)"/>
+    <text x="400" y="50" font-size="16" font-weight="700">250 шинэ тохиргоо</text>
+    <text x="400" y="72" font-size="12" class="muted">одоогийнхоос бага зэрэг өөрчилсөн + санамсаргүй</text>
+
+    <path d="M160 100 H640 L585 170 H215 Z" fill="var(--accent-soft)" stroke="var(--accent)"/>
+    <text x="400" y="128" font-size="15" font-weight="700">① Walk-forward → ~10</text>
+    <text x="400" y="150" font-size="12" class="muted">түүхийн 4 хэсэг бүгдэд тогтвортой сайн байх ёстой</text>
+
+    <path d="M215 180 H585 L535 250 H265 Z" fill="var(--warn-soft)" stroke="var(--warn)"/>
+    <text x="400" y="208" font-size="15" font-weight="700">② Vault → ~2</text>
+    <text x="400" y="230" font-size="12" class="muted">хэзээ ч "хараагүй" сүүлийн 15%</text>
+
+    <path d="M265 260 H535 L495 320 H305 Z" fill="var(--up-soft)" stroke="var(--up)"/>
+    <text x="400" y="284" font-size="15" font-weight="700">③ Shadow → 1</text>
+    <text x="400" y="305" font-size="12" class="muted">10+ хоног бодит цаг хугацаанд өрсөлдөнө</text>
+  </g>
+</svg>
+</div>
+<div class="grid2">
+  <div class="card"><b>🧩 Pattern-ууд</b><p class="muted">Аль pattern бодитоор ажилладгийг өдөр бүр дахин хэмжинэ. Жишээ нь "structure" ажилладаг, "double top" эсрэгээрээ ажилладаг гэдэг олдсон.</p></div>
+  <div class="card"><b>🌐 Интернэтийн стратеги</b><p class="muted">Ollama Reddit-ийн постуудаас дүрэм гаргана. Backtest-ийг давсан нь л санд орно. AI-ийн бичсэн код хэзээ ч ажиллахгүй.</p></div>
+</div>
+
+<!-- 8 -->
+<h2 id="carry"><span class="num">8</span>Funding Carry: хоёр дахь орлогын эх үүсвэр</h2>
+<div class="card">
+<svg viewBox="0 0 800 200" role="img" aria-label="Carry: spot дээр худалдаж авах ба futures дээр short хийх нь үнийн хөдөлгөөнийг тэглэж, funding орлого үлдэнэ">
+  <g text-anchor="middle">
+    <rect x="30" y="30" width="230" height="80" rx="12" fill="var(--up-soft)" stroke="var(--up)"/>
+    <text x="145" y="64" font-size="15" font-weight="700">Spot: худалдаж авна</text>
+    <text x="145" y="88" font-size="12" class="muted">үнэ өсвөл +$</text>
+
+    <rect x="290" y="30" width="230" height="80" rx="12" fill="var(--down-soft)" stroke="var(--down)"/>
+    <text x="405" y="64" font-size="15" font-weight="700">Futures: short хийнэ</text>
+    <text x="405" y="88" font-size="12" class="muted">үнэ өсвөл −$</text>
+
+    <rect x="560" y="30" width="210" height="80" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+    <text x="665" y="64" font-size="15" font-weight="700">= Funding орлого</text>
+    <text x="665" y="88" font-size="12" class="muted">8 цаг тутам</text>
+    <text x="275" y="76" font-size="22">+</text><text x="540" y="76" font-size="22">=</text>
+  </g>
+  <text x="400" y="150" text-anchor="middle" font-size="13" class="muted">Үнийн хөдөлгөөн хоорондоо тэглэгдэнэ. Long-ууд short-уудад төлдөг funding л үлдэнэ.</text>
+  <text x="400" y="174" text-anchor="middle" font-size="13" class="muted">Funding ≥ 15%/жил болоход нээгдэж, &lt; 3% болоход хаагдана. Bull зах зээлд л ашигтай.</text>
+</svg>
+</div>
+
+<!-- 9 -->
+<h2 id="schedule"><span class="num">9</span>Хэзээ юу хийдэг вэ</h2>
+<div class="scroll"><table>
+  <thead><tr><th>Хэзээ</th><th>Юу хийдэг</th></tr></thead>
+  <tbody>
+    <tr><td>30 сек тутам</td><td>Telegram команд, equity ба хязгаар хянах, limit захиалга биелсэн эсэх, stop байгаа эсэх</td></tr>
+    <tr><td>Цаг бүр</td><td>Шинэ лаа → оноо → stop шилжүүлэх / хаах / шинэ захиалга. Carry шалгах</td></tr>
+    <tr><td>30 мин тутам</td><td>Мэдээ уншиж AI-аар үнэлэх</td></tr>
+    <tr><td>6 цаг тутам</td><td>CPI, FOMC календарь шинэчлэх</td></tr>
+    <tr><td>Өдөр бүр ~09:00</td><td>Интернэтээс стратеги хайх, 250 тохиргоо турших, shadow шалгах</td></tr>
+    <tr><td>Даваа гараг</td><td>7 хоногийн тайлан Telegram руу</td></tr>
+  </tbody>
+</table></div>
+
+<!-- 10 -->
+<h2 id="tools"><span class="num">10</span>Таны хэрэгслүүд</h2>
+<div class="grid2">
+  <div class="card"><b>📱 Telegram</b><p class="muted">Бүх мэдэгдэл ирнэ. <code>/status</code> <code>/stop</code> <code>/resume</code> <code>/closeall</code> <code>/report</code> <code>/help</code></p></div>
+  <div class="card"><b>📊 Dashboard</b><p class="muted"><code>http://127.0.0.1:8765</code>: график, арилжааны шалтгаан, shadow, сан, carry</p></div>
+  <div class="card"><b>💻 Терминал</b><p class="muted"><code>main.py status</code>, <code>main.py report</code>, <code>main.py check</code></p></div>
+  <div class="card"><b>🌐 Binance Demo</b><p class="muted">Futures → Orders хэсэгт ботын бодит захиалгууд</p></div>
+</div>
+<div class="note warn"><b>Санах зүйлс</b>Demo сайт дээр гараар арилжаа бүү хий. Терминал хаагдвал бот зогсоно (биржийн stop үргэлжилж ажиллана). Батарейн цэнэглэлтийг 80%-д хязгаарлаж, лаптопыг хатуу гадаргуу дээр тавь.</div>
+
+<!-- 11 -->
+<h2 id="files"><span class="num">11</span>Файлууд (<code>crypto_ai</code> хавтас)</h2>
+<div class="scroll"><table>
+  <thead><tr><th>Файл</th><th>Үүрэг</th></tr></thead>
+  <tbody>
+    <tr><td>bot/risk_guard.py</td><td>🛡 Хатуу хязгаар. Зөвхөн та өөрчилнө</td></tr>
+    <tr><td>bot/strategy.py</td><td>🧠 Оноо бодох</td></tr>
+    <tr><td>bot/trader.py</td><td>❤️ Үндсэн давталт (зүрх)</td></tr>
+    <tr><td>bot/broker.py</td><td>✋ Binance-тай харилцах</td></tr>
+    <tr><td>bot/exits.py</td><td>Breakeven, trailing, хагас TP</td></tr>
+    <tr><td>bot/backtest.py · validation.py</td><td>📈 Түүхэн шалгалт, walk-forward, vault</td></tr>
+    <tr><td>bot/improver.py · shadow.py</td><td>📈 Сайжруулалт, shadow туршилт</td></tr>
+    <tr><td>bot/reward.py</td><td>🧪 Шагнал, допамин</td></tr>
+    <tr><td>bot/news.py · research.py · review.py · ai.py</td><td>📰 AI (Ollama)</td></tr>
+    <tr><td>bot/patterns.py · library.py</td><td>Chart pattern, стратегийн сан</td></tr>
+    <tr><td>bot/carry.py · events.py</td><td>Funding carry, календарь</td></tr>
+    <tr><td>strategy_params.json</td><td>Одоогийн "тархи" (жингүүд)</td></tr>
+    <tr><td>data/bot.db</td><td>Бүх өгөгдөл, арилжааны түүх</td></tr>
+    <tr><td>.env</td><td>🔒 Тохиргоо, түлхүүр. Хэнд ч бүү үзүүл</td></tr>
+  </tbody>
+</table></div>
+
+<!-- 12 -->
+<h2 id="terms"><span class="num">12</span>Нэр томьёо</h2>
+<dl class="term card">
+  <dt>Long / Short</dt><dd>Үнэ өснө гэж бооцоо тавих / унана гэж бооцоо тавих</dd>
+  <dt>Perpetual futures</dt><dd>Койныг өөрөө эзэмшилгүйгээр үнэ дээр нь бооцоо тавих гэрээ</dd>
+  <dt>R</dt><dd>Эрсдэлийн нэгж. 1R = орсон үнээс stop хүртэлх зай</dd>
+  <dt>ATR</dt><dd>Үнэ ердийн нэг цагт хэр их хэлбэлздэг вэ. Stop-ын зайг үүгээр тооцно</dd>
+  <dt>Maker / Taker</dt><dd>Номонд хүлээж буй захиалга (хямд) / шууд биелэх захиалга (үнэтэй)</dd>
+  <dt>Funding</dt><dd>Perpetual дээр 8 цаг тутам long, short хоёрын хооронд төлөгддөг төлбөр</dd>
+  <dt>Backtest</dt><dd>Стратегийг өнгөрсөн өгөгдөл дээр туршиж үзэх</dd>
+  <dt>Overfitting</dt><dd>Өнгөрсөнд хэт тааруулсан, ирээдүйд ажиллахгүй стратеги</dd>
+  <dt>Drawdown</dt><dd>Оргилоосоо хэр их унасан бэ</dd>
+  <dt>Breakeven</dt><dd>Stop-ыг орсон үнэ рүү шилжүүлж, алдагдалгүй болгох</dd>
+</dl>
+
+<!-- 13 -->
+<h2 id="honest"><span class="num">13</span>Шударга дүгнэлт</h2>
+<div class="note good"><b>✅ Систем бүрэн ажиллаж байна</b>Хамгаалалт, захиалга, AI, Telegram бүгд Binance Demo дээр бодитоор шалгагдсан.</div>
+<div class="note bad"><b>⚠️ Ашигтай стратеги хараахан олдоогүй</b>Одоогийн тохиргоо хамгийн сүүлийн өгөгдөл (vault) дээр −3.3% гарсан. Shadow-ууд дөнгөж туршигдаж эхэлж байна. 10 сонгодог стратегийн нэг нь ч шалгалт давсангүй.</div>
+<div class="note info"><b>🎯 Ийм учраас demo дээр туршиж байгаа юм</b>Ихэнх бот мөнгө алддаг. Энэ бот хамгийн багадаа <b>муу байвал муу гэдгээ шударгаар харуулж</b>, таныг хамгаална. 14 хоногийн дараа (10/24) автоматаар дүгнэлт гарна. Санхүүгийн зөвлөгөө биш.</div>
+
+<footer>crypto_ai · бичсэн 2026-10-10 · Тохиргоо өөрчлөгдөхөд энэ хуудас автоматаар шинэчлэгдэхгүй тул тоон утгуудыг <code>main.py status</code> болон dashboard-оос харна уу.</footer>
+</div>
+</body>
+</html>

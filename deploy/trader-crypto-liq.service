@@ -1,0 +1,16 @@
+[Unit]
+Description=Trader AI v2 · crypto liquidation recorder
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+User=bot
+WorkingDirectory=/opt/trader_ai_v2
+ExecStart=/opt/trader_ai_v2/.venv/bin/python main.py crypto liqrecord
+Environment=PYTHONUTF8=1
+Restart=always
+RestartSec=30
+Nice=5
+
+[Install]
+WantedBy=multi-user.target
