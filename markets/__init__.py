@@ -1,7 +1,7 @@
 """Market registry: markets.get("crypto") -> the crypto Market adapter."""
 import importlib
 
-AVAILABLE = ("crypto",)
+AVAILABLE = ("crypto", "fx")
 
 
 def get(name: str):

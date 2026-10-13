@@ -397,8 +397,8 @@ class Trader:
         sigs, done = {}, True
         for sym in self.m.symbols:
             sig = self.signal_for(sym)
-            if not sig or sig["bar_ts"] < bar_now:
-                done = False  # exchange hasn't published the candle yet; retry next tick
+            if not sig or (sig["bar_ts"] < bar_now and self.m.is_open(bar_now)):
+                done = False  # exchange hasn't published the candle yet; retry next tick (none come when closed)
             if not sig or sig["bar_ts"] == self.st.get(f"bar:{sym}"):
                 continue
             self.st.set(f"bar:{sym}", sig["bar_ts"])

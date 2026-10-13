@@ -1,0 +1,39 @@
+# Currencies (OANDA v20). Anything here can be overridden from .env as FX_<KEY>,
+# e.g. FX_MODE=demo, FX_SYMBOLS=EUR_USD,USD_JPY
+# Market data needs an OANDA token even in signal mode: the first user with
+# USER<n>_FX_OANDA_TOKEN / _ACCOUNT is used (or FX_OANDA_TOKEN / FX_OANDA_ACCOUNT).
+
+label: "💱 Валют"
+mode: signal            # signal (paper, real prices) | demo (OANDA practice account) | live
+symbols:                # the 5 most traded pairs (BIS survey; CNY is not offered)
+  - EUR_USD
+  - USD_JPY
+  - GBP_USD
+  - AUD_USD
+  - USD_CAD
+timeframe: 1h
+history_days: 730
+book_every_hours: 6     # OANDA crowd positioning history: one snapshot per N hours
+entry_order: maker      # limit entry (FX has no maker rebate; the spread is the cost)
+paper_start_equity: 10000
+
+costs:                  # fractions of price, per side: about half the typical spread
+  maker: 0.00005
+  taker: 0.00006
+  slippage: 0.00003
+
+risk:                   # FX moves ~0.1%/hour, so crypto's 0.3% minimum stop would refuse everything.
+  min_stop_distance: 0.0008   # 0.08% (~9 pips on EUR/USD)
+  max_stop_distance: 0.03
+  max_leverage: 10            # ceiling in risk_guard; OANDA itself allows 30:1 on majors
+
+news_feeds:
+  fxstreet: https://www.fxstreet.com/rss/news
+  forexlive: https://www.forexlive.com/feed/news
+  marketpulse: https://www.marketpulse.com/feed/
+  investing_fx: https://www.investing.com/rss/news_1.rss
+
+research_sources:
+  r/Forex: https://www.reddit.com/r/Forex/top/.rss?t=week
+  r/algotrading: https://www.reddit.com/r/algotrading/top/.rss?t=week
+  r/Daytrading: https://www.reddit.com/r/Daytrading/top/.rss?t=week

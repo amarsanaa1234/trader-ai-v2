@@ -39,6 +39,21 @@ CARRY_MAX_ADVERSE_MOVE = 0.40     # close a carry if price rose 40% (perp margin
 
 MIN_PAPER_DAYS_BEFORE_LIVE = 14
 
+# A market whose prices move much less than crypto (FX: ~0.1%/hour) may set its own
+# stop-distance and leverage bounds in its config.yaml "risk:" section, but never
+# beyond these ceilings. Risk per trade, daily loss and drawdown rules stay global.
+ABS_MAX_LEVERAGE = 10
+ABS_MIN_STOP_DISTANCE = 0.0005
+
+
+def market_bounds() -> tuple[float, float, float]:
+    """(max_leverage, min_stop_distance, max_stop_distance) for the active market."""
+    r = (getattr(mkt(), "cfg", None) or {}).get("risk") or {}
+    lev = min(float(r.get("max_leverage", MAX_LEVERAGE)), ABS_MAX_LEVERAGE)
+    lo = max(float(r.get("min_stop_distance", MIN_STOP_DISTANCE)), ABS_MIN_STOP_DISTANCE)
+    hi = min(float(r.get("max_stop_distance", MAX_STOP_DISTANCE)), MAX_STOP_DISTANCE)
+    return lev, lo, hi
+
 
 def limits(mode: str | None = None) -> dict:
     """Position / total-risk / trades-per-day limits for a mode (default: the active market's)."""
@@ -109,11 +124,12 @@ def check_entry(
     if (side == 1 and stop >= entry) or (side == -1 and stop <= entry):
         return Decision(False, reason="stop-loss буруу талд байна")
 
+    max_leverage, min_stop, max_stop = market_bounds()
     stop_dist = abs(entry - stop)
     stop_pct = stop_dist / entry
-    if stop_pct < MIN_STOP_DISTANCE:
+    if stop_pct < min_stop:
         return Decision(False, reason=f"stop хэт ойрхон ({stop_pct:.2%})")
-    if stop_pct > MAX_STOP_DISTANCE:
+    if stop_pct > max_stop:
         return Decision(False, reason=f"stop хэт хол ({stop_pct:.2%})")
 
     dd_mult = drawdown_multiplier(equity, peak_equity)
@@ -130,7 +146,7 @@ def check_entry(
         return Decision(False, reason="нийт нээлттэй эрсдэл хязгаартаа хүрсэн")
 
     qty = equity * risk_frac / stop_dist
-    max_notional = equity * MAX_LEVERAGE - open_notional
+    max_notional = equity * max_leverage - open_notional
     if max_notional <= 0:
         return Decision(False, reason="leverage хязгаар дүүрсэн")
     qty = min(qty, max_notional / entry)
