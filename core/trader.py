@@ -27,7 +27,7 @@ import numpy as np
 
 import markets
 
-from . import (events, exits, improver, news, research, review, reward, risk_guard,
+from . import (events, exits, improver, news, research, review, reward, risk_guard, risk_ladder,
                telegram_bot)
 from . import messages as M
 from . import users as users_mod
@@ -261,18 +261,37 @@ class Trader:
             rets[s] = df["close"].iloc[-720:].pct_change()
         return max(float(np.nan_to_num(rets[sym].corr(rets[o]))) for o in others)
 
+    def risk_per_trade(self) -> float | None:
+        """The person's own choice, capped by the market's risk ladder (if it has one)."""
+        mine = self.acc.user.risk_per_trade
+        lad = risk_ladder.config()
+        if not lad:
+            return mine
+        rs = [t["r_multiple"] for t in self.st.closed_trades(self.m.mode, 1000, self.acc.name)
+              if t.get("r_multiple") is not None]
+        state, msg = risk_ladder.step(self.acc.get("ladder") or {}, rs, lad)
+        self.acc.set("ladder", state)
+        if msg:
+            notify(msg, to=self.to())
+        step = risk_ladder.current(state, lad)
+        return min(mine, step) if mine else step
+
     def try_enter(self, sym: str, sig: dict, positions: dict, equity: float, day: dict) -> str | None:
         """Places a limit entry. Returns the risk-guard reason if the signal was refused."""
         side = sig["signal"]
         dist = self.params["stop_atr"] * sig["atr"]
         limit = sig["close"] - side * self.params["entry_offset_atr"] * sig["atr"]
         count, notional, risk = self.open_exposure(positions)
+        ok, why = self.m.spread_ok(sym)
+        if not ok:
+            return why
         dec = risk_guard.check_entry(
             equity=equity, entry=limit, stop=limit - side * dist, side=side, open_positions=count,
             open_notional=notional, trades_today=day["trades"], halted=day["halted"],
             peak_equity=self.acc.get("peak_equity", equity), open_risk=risk,
             max_corr_same_side=self.correlation(sym, side),
-            blackout=events.blackout(self.st), paused=self.paused(), risk_per_trade=self.acc.user.risk_per_trade)
+            blackout=events.blackout(self.st, symbol=sym), paused=self.paused(),
+            risk_per_trade=self.risk_per_trade())
         if not dec.allowed:
             return dec.reason
         try:

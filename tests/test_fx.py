@@ -48,13 +48,55 @@ def test_swap_charged_once_a_day_and_triple_on_wednesday(fx_db):
     assert sorted(charged.round(12).unique()) == [round(daily, 12), round(3 * daily, 12)]
 
 
+def test_no_entry_rollover_and_friday():
+    idx = pd.Index([ms(2026, 10, 14, 16), ms(2026, 10, 14, 20), ms(2026, 10, 14, 12), ms(2026, 10, 16, 16)])
+    # 4h bars closing 20:00 (ok), 00:00 (ok), 16:00 (ok); the 1h config is not used here
+    blocked = FX.no_entry(idx)
+    assert blocked.tolist() == [False, False, False, True]      # Friday bar closing 20:00 is blocked
+
+
+def test_risk_ladder_steps():
+    from core import risk_ladder as rl
+    cfg = {"levels": [0.005, 0.01], "window": 30, "up_avg_r": 0.0, "up_profit_factor": 1.2, "down_avg_r": 0.0}
+    st, msg = rl.step({}, [0.5] * 10, cfg)
+    assert st["level"] == 0 and msg is None                     # not 30 trades yet
+    good = [1.0, -0.5] * 15                                     # avg +0.25R, profit factor 2
+    st, msg = rl.step(st, good, cfg)
+    assert st["level"] == 1 and "1.00%" in msg
+    st, msg = rl.step(st, good + [0.1] * 5, cfg)
+    assert st["level"] == 1 and msg is None                     # only 5 new trades: wait
+    bad = [-1.0, 0.5] * 15 + good                               # newest 30 average -0.25R
+    st, msg = rl.step(st, bad, cfg)
+    assert st["level"] == 0 and rl.current(st, cfg) == 0.005
+    assert max(cfg["levels"]) <= rg.RISK_PER_TRADE
+
+
+def test_worst_situations_needs_clear_evidence():
+    from core import mistakes
+    stats = {"against_cot": [-1.0, -0.5, -1.0, 0.2] * 10,      # 40 trades, clearly losing
+             "day_mon": [-1.0, 1.0] * 20,                       # coin flip
+             "few": [-1.0] * 5}                                 # too few to judge
+    found = mistakes.worst_situations(stats)
+    assert [f["tag"] for f in found] == ["against_cot"]
+    assert mistakes.worst_situations(stats, already=["against_cot"]) == []
+
+
+def test_blackout_only_for_the_pairs_currencies(fx_db, monkeypatch):
+    from core import events
+    now = ms(2026, 10, 14, 12)
+    fx_db.set("calendar", [{"ts": now, "title": "RBA rate decision", "country": "AUD"}])
+    monkeypatch.setattr(events, "MANUAL", events.MANUAL.with_name("no_such_events.json"))
+    assert events.blackout(fx_db, now, "AUD_USD")
+    assert events.blackout(fx_db, now, "EUR_USD") is None
+
+
 def test_fx_risk_bounds(fx_db):
     lev, lo, hi = rg.market_bounds()
-    assert lev == 10 and lo == pytest.approx(0.0008)
-    # a 0.15% stop is refused for crypto but fine for FX
+    assert lev == 2 and lo == pytest.approx(0.0008)
+    # a 0.15% stop is refused for crypto but fine for FX; size stays within 2x leverage
     d = rg.check_entry(equity=10_000, entry=1.1, stop=1.1 * (1 - 0.0015), side=1, open_positions=0,
                        open_notional=0, trades_today=0, halted=False, peak_equity=10_000)
-    assert d.allowed and d.qty * 1.1 <= 10_000 * 10 + 1e-6
+    assert d.allowed and d.qty * 1.1 <= 10_000 * 2 + 1e-6
     context.activate(markets.get("crypto"))
     assert not rg.check_entry(equity=10_000, entry=1.1, stop=1.1 * (1 - 0.0015), side=1, open_positions=0,
                               open_notional=0, trades_today=0, halted=False, peak_equity=10_000).allowed

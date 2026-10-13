@@ -17,7 +17,12 @@ from .strategy import compute
 
 VAULT_FRACTION = 0.15
 N_FOLDS = 4
-FOLD_MIN_TRADES = 8
+FOLD_MIN_TRADES = 8   # default; a market may demand more (config validation.min_fold_trades)
+
+
+def min_trades() -> int:
+    from .context import mkt
+    return int(((getattr(mkt(), "cfg", None) or {}).get("validation") or {}).get("min_fold_trades", FOLD_MIN_TRADES))
 
 
 def windows(n_rows: int):
@@ -52,7 +57,7 @@ def walk_forward(frames: dict, p: dict, signal_fn=None) -> dict:
     fold_scores, fold_returns, total, all_r = [], [], 0, []
     for k in range(N_FOLDS):
         rs, dd, ret, n = _window_stats(frames, p, lambda m, k=k: windows(m)[0][k], feats, signal_fn)
-        fold_scores.append(round(strategy_score(rs, dd, min_trades=FOLD_MIN_TRADES), 3))
+        fold_scores.append(round(strategy_score(rs, dd, min_trades=min_trades()), 3))
         fold_returns.append(round(ret, 4))
         total += n
         all_r += rs
@@ -65,7 +70,7 @@ def walk_forward(frames: dict, p: dict, signal_fn=None) -> dict:
 def vault(frames: dict, p: dict, signal_fn=None) -> dict:
     feats = None if signal_fn else {s: compute(df, p) for s, df in frames.items()}
     rs, dd, ret, n = _window_stats(frames, p, lambda m: windows(m)[1], feats, signal_fn)
-    return {"score": round(strategy_score(rs, dd, min_trades=FOLD_MIN_TRADES), 3), "trades": n,
+    return {"score": round(strategy_score(rs, dd, min_trades=min_trades()), 3), "trades": n,
             "return": round(ret, 4), "max_dd": round(dd, 4),
             "avg_r": round(float(np.mean(rs)), 3) if rs else 0.0}
 
@@ -83,6 +88,7 @@ def forward(frames: dict, p: dict, since_ms: int) -> dict:
         rets.append(res.total_return)
         n += len(res.trades)
     dd = max(dds) if dds else 0.0
+    # a shadow only sees a few weeks of new candles, so the market's high minimum doesn't apply
     return {"score": round(strategy_score(rs, dd, min_trades=FOLD_MIN_TRADES), 3), "trades": n,
             "return": round(float(np.mean(rets)), 4) if rets else 0.0, "max_dd": round(dd, 4),
             "avg_r": round(float(np.mean(rs)), 3) if rs else 0.0}

@@ -51,7 +51,7 @@ def features(df: pd.DataFrame, f: pd.DataFrame) -> pd.DataFrame:
     X["d_lo24"] = (c - df["low"].rolling(24).min()) / a
     X["vol_ratio"] = df["volume"] / df["volume"].rolling(24).mean()
     X["adx"] = adx(df, 14)
-    for k in ("htf_4h", "htf_1d"):
+    for k in ("htf_1", "htf_2"):
         X[k] = df[k] if k in df else 0.0
     for col in mkt().rule_columns:  # raw market data, e.g. crypto funding rate
         X[f"{col}_raw"] = df[col]

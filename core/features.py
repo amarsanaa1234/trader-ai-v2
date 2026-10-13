@@ -10,7 +10,7 @@ from .indicators import atr, ema
 def htf_trend(df: pd.DataFrame, rule: str, ema_n: int) -> np.ndarray:
     """Trend of a higher timeframe in [-1, 1], using only HTF candles that had
     fully closed when each base candle closed (no peeking)."""
-    step = int(df.index[1] - df.index[0])
+    step = int(np.min(np.diff(df.index.to_numpy()[:200])))   # min: FX has weekend gaps
     dt = pd.to_datetime(df.index, unit="ms", utc=True)
     base = pd.DataFrame({"high": df["high"].to_numpy(), "low": df["low"].to_numpy(),
                          "close": df["close"].to_numpy()}, index=dt)
@@ -28,6 +28,15 @@ def add_static_features(df: pd.DataFrame, strats: list[dict] | None = None) -> p
         return df
     df = pd.concat([df, patterns.detect(df)], axis=1)
     df["library"] = library.library_signal(df, strats)
-    df["htf_4h"] = htf_trend(df, "4h", 50)
-    df["htf_1d"] = htf_trend(df, "1D", 20)
+    for k, (rule, n) in enumerate(htf_rules(), 1):
+        df[f"htf_{k}"] = htf_trend(df, rule, int(n))
     return df
+
+
+def htf_rules() -> list:
+    """Two higher timeframes for the active market's base timeframe (config "htf"),
+    default 4h + 1 day (for 1h candles)."""
+    from .context import mkt
+    m = mkt()
+    rules = ((getattr(m, "cfg", None) or {}).get("htf") or {}).get(m.timeframe)
+    return [tuple(r) for r in rules] if rules else [("4h", 50), ("1D", 20)]

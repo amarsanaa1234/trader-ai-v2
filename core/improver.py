@@ -14,7 +14,7 @@ import os
 import random
 from concurrent.futures import ProcessPoolExecutor
 
-from . import library, patterns, shadow, validation
+from . import library, mistakes, patterns, shadow, validation
 from .features import add_static_features
 from .context import mkt
 from .strategy import clamp_params, load_params, param_space, save_params
@@ -25,6 +25,11 @@ MIN_VAULT_TRADES = 10
 MAX_VAULT_DD = 0.20
 PROMOTE_MARGIN = 0.25
 MIN_POSITIVE_FOLDS = 3
+
+
+def min_vault_trades() -> int:
+    """A market may demand more vault trades (config validation.min_vault_trades)."""
+    return int(((getattr(mkt(), "cfg", None) or {}).get("validation") or {}).get("min_vault_trades", MIN_VAULT_TRADES))
 
 
 def mutate(p: dict, scale: float, rng: random.Random) -> dict:
@@ -114,18 +119,29 @@ def improve(st, symbols, dopamine: float = 0.0, seed: int | None = None) -> dict
     results = walk_forward_many(frames, candidates)
     scored = sorted(zip(results, candidates), key=lambda x: -x[0]["score"])
 
+    # Mistake memory: for the best few, look at where their losing trades cluster
+    # (research windows only) and try staying out of those situations.
+    lessons = []
+    for wf, cand in list(scored[:3]):
+        better, learned = mistakes.learn(frames, cand, wf)
+        if learned:
+            scored.append((validation.walk_forward(frames, better), better))
+            lessons.append(learned)
+    scored.sort(key=lambda x: -x[0]["score"])
+
     passed = []
     for wf, cand in scored[:10]:
         if wf["score"] <= cur_wf["score"] or wf["positive_folds"] < MIN_POSITIVE_FOLDS:
             continue
         v = validation.vault(frames, cand)
-        if (v["score"] > cur_vault["score"] + PROMOTE_MARGIN and v["trades"] >= MIN_VAULT_TRADES
+        if (v["score"] > cur_vault["score"] + PROMOTE_MARGIN and v["trades"] >= min_vault_trades()
                 and v["return"] > 0 and v["max_dd"] < MAX_VAULT_DD):
             passed.append((wf, v, cand))
 
     report = {"current": {"walk_forward": cur_wf, "vault": cur_vault}, "candidates": n,
               "best_walk_forward": scored[0][0] if scored else None, "pattern_edges": edges,
-              "library_approved": [s["name"] for s in library.approved()], "new_shadows": []}
+              "library_approved": [s["name"] for s in library.approved()], "new_shadows": [],
+              "lessons": lessons}
 
     if not mkt().params_path.exists() and passed:
         # very first run: nothing live to protect yet, use the best candidate directly

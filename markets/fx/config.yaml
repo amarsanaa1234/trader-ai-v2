@@ -1,31 +1,66 @@
 # Currencies (OANDA v20). Anything here can be overridden from .env as FX_<KEY>,
-# e.g. FX_MODE=demo, FX_SYMBOLS=EUR_USD,USD_JPY
+# e.g. FX_MODE=demo, FX_SYMBOLS=EUR_USD,USD_JPY, FX_TIMEFRAME=4h
 # Market data needs an OANDA token even in signal mode: the first user with
 # USER<n>_FX_OANDA_TOKEN / _ACCOUNT is used (or FX_OANDA_TOKEN / FX_OANDA_ACCOUNT).
 
 label: "💱 Валют"
 mode: signal            # signal (paper, real prices) | demo (OANDA practice account) | live
-symbols:                # the 5 most traded pairs (BIS survey; CNY is not offered)
+symbols:                # the 5 most traded pairs + 5 more so there are enough trades to judge
   - EUR_USD
   - USD_JPY
   - GBP_USD
   - AUD_USD
   - USD_CAD
-timeframe: 1h
-history_days: 730
-book_every_hours: 6     # OANDA crowd positioning history: one snapshot per N hours
-entry_order: maker      # limit entry (FX has no maker rebate; the spread is the cost)
+  - USD_CHF
+  - NZD_USD
+  - EUR_JPY
+  - GBP_JPY
+  - EUR_GBP
+timeframe: 4h           # chosen by tools/tf_compare.py (1h vs 4h on 8 years)
+history_days: 2920      # 8 years
+book_days: 730          # OANDA crowd history to download (older years: no crowd data)
+book_every_hours: 6
 paper_start_equity: 10000
+entry_order: maker      # limit entry (FX has no maker rebate; the spread is the cost)
 
-costs:                  # fractions of price, per side: about half the typical spread
-  maker: 0.00005
-  taker: 0.00006
+# Higher timeframes the score looks at, per base timeframe: [pandas rule, EMA length]
+htf:
+  1h: [[4h, 50], [1D, 20]]
+  4h: [[1D, 20], [1W, 10]]
+
+# Prices the cross-asset source reads (not traded): oil, gold, copper, S&P 500
+aux_symbols: [BCO_USD, XAU_USD, XCU_USD, SPX500_USD]
+
+costs:                  # fractions of price, per side: about half the typical spread (crosses are wider)
+  maker: 0.00006
+  taker: 0.00008
   slippage: 0.00003
 
-risk:                   # FX moves ~0.1%/hour, so crypto's 0.3% minimum stop would refuse everything.
-  min_stop_distance: 0.0008   # 0.08% (~9 pips on EUR/USD)
+risk:                   # FX moves ~0.1%/hour, so crypto's 0.3% minimum stop would refuse everything
+  min_stop_distance: 0.0008   # 0.08%
   max_stop_distance: 0.03
-  max_leverage: 10            # ceiling in risk_guard; OANDA itself allows 30:1 on majors
+  max_leverage: 2             # owner's choice (2026-10-13)
+  max_spread: 0.0004          # no new entry while the live spread is wider than 0.04% of price
+  ladder:                     # risk per trade steps with the last 30 closed trades
+    levels: [0.005, 0.01]     # start at 0.5%, never above 1%
+    window: 30
+    up_avg_r: 0.0             # move up: average R above this ...
+    up_profit_factor: 1.2     # ... and profit factor above this
+    down_avg_r: 0.0           # move down: average R below this
+
+validation:             # "too few trades proves nothing": stricter than crypto
+  min_fold_trades: 40
+  min_vault_trades: 60
+
+# No new entries (backtest and live): the daily rollover, when spreads widen a lot,
+# and Friday evening before the weekend gap.
+no_entry:
+  rollover_utc: [20.5, 22.5]
+  friday_after_utc: 18
+
+# Calendar blackout: high-impact events of the pair's own two currencies
+event_countries: [USD, EUR, JPY, GBP, AUD, CAD, CHF, NZD]
+events_by_symbol: true
 
 news_feeds:
   fxstreet: https://www.fxstreet.com/rss/news

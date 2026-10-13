@@ -9,6 +9,7 @@ import os
 import re
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -113,6 +114,18 @@ class Market:
     def sources(self, df: pd.DataFrame, p: dict) -> dict:
         """Market-specific evidence in [-1, 1], keyed by source_names."""
         return {}
+
+    def no_entry(self, index: pd.Index):
+        """Bars on which no new trade may start (e.g. FX rollover); backtest and live alike."""
+        return np.zeros(len(index), dtype=bool)
+
+    def tags(self, df: pd.DataFrame) -> dict:
+        """Extra side-independent situations (name -> bool Series) for the mistake memory."""
+        return {}
+
+    def spread_ok(self, symbol: str) -> tuple[bool, str]:
+        """Live check right before an entry (e.g. spread unusually wide)."""
+        return True, ""
 
     # ---------- data ----------
     def sync(self, st, symbols=None) -> None:

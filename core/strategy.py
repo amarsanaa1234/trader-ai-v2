@@ -127,6 +127,36 @@ def save_params(params: dict, metrics: dict, note: str) -> None:
     }, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def situation_tags(df: pd.DataFrame, out: pd.DataFrame) -> dict:
+    """Situations a trade can start in, as {name: (bad_for_long, bad_for_short)} bool arrays.
+    The mistake memory (mistakes.py) looks for ones where trades keep losing."""
+    n = len(df)
+    tags = {}
+    for src in source_names():
+        if src in out:
+            v = np.asarray(out[src], dtype=float)
+            tags[f"against_{src}"] = (v < -0.5, v > 0.5)          # strong evidence the other way
+    reg = np.asarray(out["regime"]) if "regime" in out else np.zeros(n)
+    tags["regime_trend"] = (reg == 1, reg == 1)
+    tags["regime_range"] = (reg == -1, reg == -1)
+    wd = pd.to_datetime(df.index, unit="ms", utc=True).weekday
+    for d, name in enumerate(("mon", "tue", "wed", "thu", "fri")):
+        m = np.asarray(wd == d)
+        tags[f"day_{name}"] = (m, m)
+    for name, s in mkt().tags(df).items():
+        m = np.asarray(s, dtype=bool)
+        tags[name] = (m, m)
+    return tags
+
+
+def avoid_masks(tag: str, df: pd.DataFrame, out: pd.DataFrame):
+    t = situation_tags(df, out).get(tag)
+    if t is None:
+        z = np.zeros(len(df), dtype=bool)
+        return z, z
+    return t
+
+
 def compute(df: pd.DataFrame, p: dict) -> pd.DataFrame:
     """Adds component columns, score, atr and signal (+1 long / -1 short / 0 flat)."""
     c = df["close"]
@@ -145,7 +175,7 @@ def compute(df: pd.DataFrame, p: dict) -> pd.DataFrame:
     out["macd"] = np.tanh((macd - ema(macd, 9)) / a.replace(0, np.nan)).fillna(0)
     out["patterns"] = pattern_score(df, p.get("pattern_edges") or {}) if "pat_engulfing" in df else 0.0
     out["library"] = df["library"] if "library" in df else 0.0
-    out["htf"] = ((df["htf_4h"] + df["htf_1d"]) / 2).fillna(0) if "htf_4h" in df else 0.0
+    out["htf"] = ((df["htf_1"] + df["htf_2"]) / 2).fillna(0) if "htf_1" in df else 0.0
     market_parts = mkt().sources(df, p)
     for name in mkt().source_names:
         out[name] = market_parts[name]
@@ -172,8 +202,13 @@ def compute(df: pd.DataFrame, p: dict) -> pd.DataFrame:
     if p["htf_block"] < 0.99:  # don't fight a strong higher-timeframe trend
         long_ok &= out["htf"] > -p["htf_block"]
         short_ok &= out["htf"] < p["htf_block"]
+    for tag in p.get("avoid") or []:   # situations the mistake memory learned to stay out of
+        long_bad, short_bad = avoid_masks(tag, df, out)
+        long_ok &= ~long_bad
+        short_ok &= ~short_bad
     sig = np.where(long_ok, 1, np.where(short_ok, -1, 0))
     sig[np.asarray(out["volatile"], dtype=bool)] = 0
+    sig[np.asarray(mkt().no_entry(df.index), dtype=bool)] = 0
     sig[: int(p["ema_slow"])] = 0  # indicator warm-up
     out["signal"] = sig
     return out

@@ -92,7 +92,7 @@ def run(df: pd.DataFrame, params: dict, start: int = 0, end: int | None = None,
         if reason:
             net = pos["realized"] - pos["cost"]
             trades.append({"ts": int(ts[i]), "side": pos["side"], "entry": pos["entry"], "exit": px,
-                           "pnl": net, "r": net / pos["risk"], "reason": reason})
+                           "pnl": net, "r": net / pos["risk"], "reason": reason, "open_bar": pos["bar"]})
 
     for i in range(max(start, 1), end):
         d = ts[i] // DAY_MS

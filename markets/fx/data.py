@@ -1,6 +1,9 @@
 """FX market data from OANDA: mid candles, OANDA clients' positioning (position
-book), financing (swap) rates, and a broad USD-strength series built from the
-traded pairs."""
+book), financing (swap) rates, prices of related markets (oil, gold, copper,
+S&P 500) and the session ranges; plus the macro series from macro.py.
+
+Every column is aligned to the moment the candle CLOSES (when the bot decides),
+so nothing from the future leaks into a backtest."""
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -9,6 +12,7 @@ import pandas as pd
 
 from core.storage import Storage, now_ms
 
+from . import macro
 from .oanda import OandaError, data_client
 
 log = logging.getLogger(__name__)
@@ -22,7 +26,18 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS book (symbol TEXT, ts INTEGER, long_pct REAL, PRIMARY KEY (symbol, ts));
 CREATE TABLE IF NOT EXISTS financing (
     symbol TEXT PRIMARY KEY, long_rate REAL, short_rate REAL, days TEXT, updated INTEGER);
-"""
+""" + macro.SCHEMA
+
+# How each currency tends to move with other markets (sign, asset):
+# commodity currencies follow their exports, safe havens rise when stocks fall.
+CROSS_ASSET = {
+    "AUD": [(0.5, "XCU_USD"), (0.5, "XAU_USD")],
+    "NZD": [(0.5, "SPX500_USD"), (0.5, "XCU_USD")],
+    "CAD": [(1.0, "BCO_USD")],
+    "JPY": [(-1.0, "SPX500_USD")],
+    "CHF": [(-0.5, "SPX500_USD"), (0.5, "XAU_USD")],
+}
+ASSET_SCALE = {"BCO_USD": 0.02, "XAU_USD": 0.01, "XCU_USD": 0.015, "SPX500_USD": 0.01}
 
 
 def usd_side(symbol: str) -> int:
@@ -106,7 +121,22 @@ def sync_financing(st: Storage, symbols) -> int:
     return len(rows)
 
 
-# ---------- frame ----------
+# ---------- frame pieces ----------
+def _closes(st: Storage, symbol: str, tf: str) -> pd.Series:
+    return pd.read_sql_query("SELECT ts, close FROM candles WHERE symbol=? AND tf=? ORDER BY ts", st.db,
+                             params=(symbol, tf)).set_index("ts")["close"]
+
+
+def _at_close(series: pd.Series, index: pd.Index, tf: str, step_ms: int | None = None) -> np.ndarray:
+    """Value known when each candle of `index` closes. `series` is indexed by the time
+    each value became known (default: candle open + its own length)."""
+    known = series.copy()
+    if step_ms is not None:
+        known.index = known.index + step_ms
+    at = index + TF_MS[tf]
+    return known.reindex(known.index.union(at)).ffill().reindex(at).to_numpy()
+
+
 def _hold_cost(st: Storage, symbol: str, index: pd.Index, tf: str) -> np.ndarray:
     """Swap charged at the 17:00 New York rollover, as a symmetric long cost:
     long pays h, short pays -h, h = (shortRate - longRate) / 2 per year. (Both sides
@@ -124,21 +154,66 @@ def _hold_cost(st: Storage, symbol: str, index: pd.Index, tf: str) -> np.ndarray
     return np.where(charged, h_day * mult, 0.0)
 
 
-def _usd_momentum(st: Storage, tf: str, symbols, index: pd.Index, bars: int = 24) -> np.ndarray:
-    """Broad US-dollar strength: average of each pair's last-24-bar move, turned so +
+def _usd_momentum(st: Storage, tf: str, symbols, index: pd.Index) -> np.ndarray:
+    """Broad US-dollar strength: average 1-day move of every USD pair, turned so +
     means USD got stronger."""
+    bars = max(1, DAY_MS // TF_MS[tf])
     parts = []
     for s in symbols:
         side = usd_side(s)
-        if not side:
-            continue
-        c = pd.read_sql_query("SELECT ts, close FROM candles WHERE symbol=? AND tf=? ORDER BY ts", st.db,
-                              params=(s, tf)).set_index("ts")["close"]
-        parts.append(side * np.log(c).diff(bars))
+        if side:
+            parts.append(side * np.log(_closes(st, s, tf)).diff(bars))
     if not parts:
         return np.zeros(len(index))
     usd = pd.concat(parts, axis=1).mean(axis=1)
-    return usd.reindex(index).ffill().fillna(0.0).to_numpy()
+    return _at_close(usd, index, tf, TF_MS[tf])
+
+
+def _cross_asset(st: Storage, symbol: str, tf: str, index: pd.Index) -> np.ndarray:
+    """Pair score from related markets' last-day moves (e.g. oil up -> CAD up -> USD_CAD down)."""
+    bars = max(1, DAY_MS // TF_MS[tf])
+    moves = {}
+
+    def move(asset):
+        if asset not in moves:
+            c = _closes(st, asset, tf)
+            m = np.tanh(np.log(c).diff(bars) / ASSET_SCALE[asset]) if len(c) else pd.Series(dtype=float)
+            moves[asset] = pd.Series(_at_close(m, index, tf, TF_MS[tf]), index=index).fillna(0.0)
+        return moves[asset]
+
+    def ccy(c):
+        return sum((w * move(a) for w, a in CROSS_ASSET.get(c, [])), pd.Series(0.0, index=index))
+
+    base, quote = symbol.split("_")
+    return (ccy(base) - ccy(quote)).clip(-1, 1).to_numpy()
+
+
+def _sessions(st: Storage, symbol: str, tf: str, index: pd.Index) -> np.ndarray:
+    """Session breakout from 1h candles: after London opens (07:00 UTC) a close beyond
+    the Tokyo range (00-07 UTC) = +1/-1; after New York opens (13:00 UTC) a close beyond
+    the London morning range (07-13 UTC) adds another +1/-1. Averaged, 0 outside 07-21 UTC."""
+    h = pd.read_sql_query("SELECT ts, high, low, close FROM candles WHERE symbol=? AND tf='1h' ORDER BY ts",
+                          st.db, params=(symbol,)).set_index("ts")
+    if h.empty:
+        return np.zeros(len(index))
+    dt = pd.to_datetime(h.index, unit="ms", utc=True)
+    hour, day = dt.hour.to_numpy(), dt.normalize()
+
+    def rng(lo_h, hi_h):
+        m = (hour >= lo_h) & (hour < hi_h)
+        g = h[m].groupby(day[m])
+        return g["high"].max().reindex(day).to_numpy(), g["low"].min().reindex(day).to_numpy()
+
+    tok_hi, tok_lo = rng(0, 7)
+    lon_hi, lon_lo = rng(7, 13)
+    c = h["close"].to_numpy()
+    after_lon = (hour >= 7) & (hour < 21)
+    after_ny = (hour >= 13) & (hour < 21)
+    tok = np.where(after_lon & (c > tok_hi), 1.0, np.where(after_lon & (c < tok_lo), -1.0, 0.0))
+    ny = np.where(after_ny & (c > lon_hi), 1.0, np.where(after_ny & (c < lon_lo), -1.0, 0.0))
+    sess = pd.Series((tok + ny) / 2, index=h.index)
+    # value of the last 1h candle that closed by the base candle's close
+    return np.nan_to_num(_at_close(sess, index, tf, HOUR_MS))
 
 
 def load_frame(st: Storage, symbol: str, tf: str, symbols) -> pd.DataFrame:
@@ -147,28 +222,29 @@ def load_frame(st: Storage, symbol: str, tf: str, symbols) -> pd.DataFrame:
         st.db, params=(symbol, tf)).set_index("ts")
     if df.empty:
         return df
+    at = df.index + TF_MS[tf]
     df["hold_cost"] = _hold_cost(st, symbol, df.index, tf)
     book = pd.read_sql_query("SELECT ts, long_pct FROM book WHERE symbol=? ORDER BY ts", st.db,
                              params=(symbol,)).set_index("ts")["long_pct"]
-    if book.empty:
-        df["long_pct"] = np.nan
-    else:
-        # the bar is decided at its close, so use the newest snapshot taken by then
-        at_close = df.index + TF_MS[tf]
-        merged = book.reindex(book.index.union(at_close)).ffill()
-        df["long_pct"] = merged.reindex(at_close).to_numpy()
+    df["long_pct"] = _at_close(book, df.index, tf) if not book.empty else np.nan
     df["usd_mom"] = _usd_momentum(st, tf, symbols, df.index)
     df["usd_side"] = float(usd_side(symbol))
+    df["rate_diff"] = macro.rate_diff(st, symbol, at).to_numpy()
+    df["cot_net"] = macro.cot_net(st, symbol, at).to_numpy()
+    df["xasset"] = _cross_asset(st, symbol, tf, df.index)
+    df["session"] = _sessions(st, symbol, tf, df.index)
     df["news"] = 0.0
     return df
 
 
-def sync_all(st: Storage, symbols, tf: str, days: int, book_every: int) -> None:
-    try:
-        sync_financing(st, symbols)
-    except Exception as e:
-        log.warning("financing татаж чадсангүй: %s", e)
-    for s in symbols:
-        n = sync_candles(st, s, tf, days)
-        b = sync_book(st, s, days, book_every)
-        log.info("%s: +%d лаа, +%d position book", s, n, b)
+def sync_all(st: Storage, symbols, tf: str, days: int, book_days: int, book_every: int, aux) -> None:
+    for name, fn in (("financing", lambda: sync_financing(st, symbols)), ("macro", lambda: macro.sync_all(st))):
+        try:
+            fn()
+        except Exception as e:
+            log.warning("%s татаж чадсангүй: %s", name, e)
+    tfs = [tf] + (["1h"] if tf != "1h" else [])     # 1h is always kept for the session ranges
+    for s in list(symbols) + list(aux):
+        n = {t: sync_candles(st, s, t, days) for t in tfs}
+        b = sync_book(st, s, book_days, book_every) if s in symbols else 0
+        log.info("%s: +%s лаа, +%d position book", s, n, b)

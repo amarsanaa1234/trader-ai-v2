@@ -23,19 +23,25 @@ def _parse(t: str) -> int:
     return int(datetime.fromisoformat(t.replace("Z", "+00:00")).astimezone(timezone.utc).timestamp() * 1000)
 
 
+def _cfg() -> dict:
+    from .context import mkt
+    return getattr(mkt(), "cfg", None) or {}
+
+
 def refresh(st: Storage) -> int:
-    """Download this week's high-impact USD events (call a few times a day)."""
+    """Download this week's high-impact events of the market's currencies (default USD)."""
+    countries = set(_cfg().get("event_countries") or ["USD"])
     r = requests.get(FEED, timeout=20, headers={"User-Agent": "Mozilla/5.0 (crypto_ai calendar)"})
     r.raise_for_status()
     found = {(e["ts"], e["title"]): e for e in st.get("calendar", []) if e["ts"] > now_ms() - 7 * 86_400_000}
     for e in r.json():
-        if e.get("impact") == "High" and e.get("country") == "USD":
+        if e.get("impact") == "High" and e.get("country") in countries:
             try:
                 ts = _parse(e["date"])
             except Exception:
                 continue
             title = e.get("title", "?")
-            found[(ts, title)] = {"ts": ts, "title": title, "country": "USD", "impact": "High",
+            found[(ts, title)] = {"ts": ts, "title": title, "country": e.get("country"), "impact": "High",
                                   "forecast": e.get("forecast") or "", "previous": e.get("previous") or ""}
     st.set("calendar", sorted(found.values(), key=lambda e: e["ts"]))
     return len(found)
@@ -52,12 +58,16 @@ def all_events(st: Storage) -> list[dict]:
     return sorted(events, key=lambda e: e["ts"])
 
 
-def blackout(st: Storage, at_ms: int | None = None) -> str | None:
-    """Returns the event title if we're inside its no-trade window."""
+def blackout(st: Storage, at_ms: int | None = None, symbol: str | None = None) -> str | None:
+    """Returns the event title if we're inside its no-trade window. With the market's
+    events_by_symbol on (FX), only events of the symbol's own currencies count."""
     t = now_ms() if at_ms is None else at_ms
+    ccys = set(symbol.split("_")) if symbol and _cfg().get("events_by_symbol") else None
     for e in all_events(st):
+        if ccys is not None and e.get("country") and e["country"] not in ccys:
+            continue
         if e["ts"] - BLACKOUT_BEFORE_MIN * MIN_MS <= t <= e["ts"] + BLACKOUT_AFTER_MIN * MIN_MS:
-            return e["title"]
+            return f"{e['title']} ({e['country']})" if e.get("country") and ccys else e["title"]
     return None
 
 
