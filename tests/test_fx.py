@@ -90,6 +90,20 @@ def test_blackout_only_for_the_pairs_currencies(fx_db, monkeypatch):
     assert events.blackout(fx_db, now, "EUR_USD") is None
 
 
+def test_macro_values_only_after_publication(fx_db):
+    from markets.fx import macro
+    day = 86_400_000
+    t0 = ms(2026, 1, 5, 0)
+    fx_db.db.executemany("INSERT INTO rates VALUES (?, ?, ?)",
+                         [("AUD", t0, 4.0), ("USD", t0, 3.0), ("AUD", t0 + 10 * day, 4.5)])
+    fx_db.db.executemany("INSERT INTO cot VALUES (?, ?, ?)", [("AUD", t0, 0.2), ("JPY", t0, -0.1)])
+    at = pd.Index([t0 - day, t0 + day, t0 + 11 * day])
+    assert macro.rate_diff(fx_db, "AUD_USD", at).round(6).tolist()[1:] == [1.0, 1.5]
+    assert pd.isna(macro.rate_diff(fx_db, "AUD_USD", at).iloc[0])          # nothing public yet
+    assert macro.cot_net(fx_db, "AUD_JPY", at).round(6).tolist()[1] == 0.3   # 0.2 - (-0.1)
+    assert macro.cot_net(fx_db, "USD_JPY", at).round(6).tolist()[1] == 0.1   # USD counts as 0
+
+
 def test_fx_risk_bounds(fx_db):
     lev, lo, hi = rg.market_bounds()
     assert lev == 2 and lo == pytest.approx(0.0008)

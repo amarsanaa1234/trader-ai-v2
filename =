@@ -1,0 +1,16 @@
+﻿.\.venv\Scripts\python.exe : <string>:11: SyntaxWarning: "\}" is an invalid escape sequence. Such sequences will not 
+work in the future. Did you mean "\\}"? A raw string is also an option.
+At line:1 char:363
++ ... oads\trader_ai_v2; $env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -c "
++                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (<string>:11: Sy...also an option.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "<string>", line 11
+    r = requests.get('https://publicreporting.cftc.gov/resource/6dca-aqww.json', timeout=60, 
+params={'cftc_contract_market_code': '099741', '$limit': 5000, '$order': 'report_date_as_yyyy_mm_dd', '$where': f" 
+report_date_as_yyyy_mm_dd {since:%Y-%m-%d} \})
+                                                                                                                       
+                                                                                                                       
+              ^
+SyntaxError: f-string: single '}' is not allowed

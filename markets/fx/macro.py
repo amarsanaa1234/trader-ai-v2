@@ -62,7 +62,8 @@ def sync_rates(st: Storage) -> int:
             if s.empty:
                 continue
             # when it was public: monthly -> 6 weeks after the month ends; daily -> next day
-            public = s.index + (pd.offsets.MonthEnd(1) + pd.Timedelta(days=45) if monthly else pd.Timedelta(days=1))
+            public = (s.index + pd.offsets.MonthEnd(1) + pd.Timedelta(days=45)) if monthly else \
+                s.index + pd.Timedelta(days=1)
             rows += [(ccy, int(t.timestamp() * 1000), float(v)) for t, v in zip(public, s.to_numpy())]
             break
     st.db.execute("DELETE FROM rates")
@@ -121,7 +122,11 @@ def cot_net(st: Storage, symbol: str, at: pd.Index) -> pd.Series:
 
 
 def sync_all(st: Storage) -> None:
-    log.info("хүү: %d мөр, COT: %d мөр", sync_rates(st), sync_cot(st))
+    for name, fn in (("хүү", sync_rates), ("COT", sync_cot)):
+        try:
+            log.info("%s: %d мөр", name, fn(st))
+        except Exception as e:   # one source failing must not stop the other
+            log.warning("%s татаж чадсангүй: %s", name, e)
 
 
 def last_update_age_days(st: Storage) -> float:
