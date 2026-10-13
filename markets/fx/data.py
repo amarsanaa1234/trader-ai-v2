@@ -65,7 +65,8 @@ def _book_at(symbol: str, ts_s: int | None):
     short_pct = sum(float(x["shortCountPercent"]) for x in b["buckets"])
     if long_pct + short_pct <= 0:
         return None
-    return int(float(b["time"]) * 1000), 100 * long_pct / (long_pct + short_pct)
+    ts = b.get("unixTime") or pd.Timestamp(b["time"]).timestamp()   # the book ignores the UNIX header
+    return int(float(ts) * 1000), 100 * long_pct / (long_pct + short_pct)
 
 
 def sync_book(st: Storage, symbol: str, days: int, every_hours: int = 6) -> int:
