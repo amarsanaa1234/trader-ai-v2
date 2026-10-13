@@ -1,0 +1,5 @@
+# /etc/caddy/Caddyfile — HTTPS in front of the web app (login required for everything but /public)
+209-38-85-71.sslip.io {
+	encode gzip
+	reverse_proxy 127.0.0.1:8765
+}

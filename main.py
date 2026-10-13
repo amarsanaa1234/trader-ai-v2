@@ -1,4 +1,11 @@
-"""Trader AI v2 — python main.py <зах зээл> <команд>
+"""Trader AI v2
+
+Бүх зах зээлд нийтлэг:
+  python main.py web                     вэб (нэвтрэлт, цэс, хүн бүрийн хуудас), http://127.0.0.1:8765
+  python main.py users                   хэрэглэгчид (.env USER<n>_...), тэдний зах зээл, нууц үг
+  python main.py user password <нэр>     вэбийн нууц үг тохируулах
+
+Зах зээл тус бүр: python main.py <зах зээл> <команд>
 
 Зах зээл: crypto (дараа нь fx, metals, commodities, indices, bonds)
 
@@ -12,12 +19,12 @@
   news        мэдээ уншиж, AI-аар үнэлэх
   events      удахгүй болох чухал үйл явдлууд (CPI, FOMC...)
   check       брокерийн холболт шалгах (зөвхөн уншина)
-  status      арилжааны дүн, допамин
+  status      хүн бүрийн дүн, допамин
   report      7 хоногийн тайлан
-  dashboard   зөвхөн dashboard асаах
+  migrate     v1-ийн нэг хэрэглэгчийн өгөгдлийг гол админд шилжүүлэх (нэг удаа)
   telegram    Telegram ботоо холбох (chat ID-г автоматаар олно)
   resetpeak   30%-ийн drawdown зогсолтыг шалгаад дахин нээх
-  run         ботыг тасралтгүй ажиллуулах (dashboard хамт асна)
+  run         ботыг тасралтгүй ажиллуулах (бүх хэрэглэгчийн данс)
 
 Жишээ:  python main.py crypto backtest
         python main.py crypto help      (тухайн зах зээлийн нэмэлт командууд)
@@ -131,25 +138,42 @@ def cmd_events(st):
     print("Одоо арилжаа хаалттай юу:", events.blackout(st) or "үгүй")
 
 
+def accounts(st):
+    from core import users
+    from core.account import Account
+    out = []
+    for u in mkt().traders(users.load_users(markets.AVAILABLE)):
+        try:
+            out.append(Account(u, st))
+        except Exception as e:
+            print(f"  {u.name}: данс холбогдсонгүй: {e}")
+    return out
+
+
 def cmd_check(st):
-    b = mkt().make_broker(st)
     print("Зах зээл:", mkt().name, "| горим:", mkt().mode)
-    print("Equity:", round(b.equity(), 2))
-    print("Position:", b.positions())
+    for acc in accounts(st):
+        print(f"👤 {acc.name}: equity {acc.broker.equity():,.2f} | position {acc.broker.positions()}")
 
 
 def cmd_status(st):
-    from core import reward
+    from core import reward, users
     from core.storage import now_ms
     mode = mkt().mode
-    dop = st.get("dopamine", 0.0)
     started = st.get("paper_started")
-    print(f"{mkt().label} · горим: {mode} | допамин {dop:+.2f} {reward.mood(dop)} | "
-          f"{'⏸ ЗОГССОН' if st.get('paused') else 'ажиллаж байна'}")
+    print(f"{mkt().label} · горим: {mode}")
     if started:
         print(f"Туршилтын хугацаа: {(now_ms() - started) / 86_400_000:.1f} хоног")
-    print("Өнөөдөр:", st.get("day"), "| оргил equity:", st.get("peak_equity"))
-    trades = st.closed_trades(mode, 20)
+    for u in mkt().traders(users.load_users(markets.AVAILABLE)):
+        g = lambda k, d=None: st.get(f"{u.name}:{k}", d)  # noqa: E731
+        dop = g("dopamine", 0.0)
+        print(f"\n👤 {u.name}: допамин {dop:+.2f} {reward.mood(dop)} | {'⏸ ЗОГССОН' if g('paused') else 'ажиллаж байна'}")
+        print("   Өнөөдөр:", g("day"), "| оргил equity:", g("peak_equity"))
+        _print_trades(st, mode, u.name)
+
+
+def _print_trades(st, mode, user):
+    trades = st.closed_trades(mode, 20, user)
     if trades:
         tot = sum(t["pnl"] or 0 for t in trades)
         wins = sum(1 for t in trades if (t["pnl"] or 0) > 0)
@@ -157,9 +181,9 @@ def cmd_status(st):
         for t in trades[:10]:
             print(f"  {t['symbol']:16} {t['side']:5} {t['exit_reason']:18} {t['pnl']:+8.2f} "
                   f"{t['r_multiple']:+.2f}R шагнал {t['reward']:+.2f}  {t.get('review') or ''}")
-    for t in st.open_trades(mode):
+    for t in st.open_trades(mode, user):
         print(f"  НЭЭЛТТЭЙ: {t['symbol']} {t['side']} @ {t['entry']:.2f} stop {t['stop']:.2f} tp {t['tp']:.2f}")
-    for c in st.open_carries(mode):
+    for c in st.open_carries(mode, user):
         print(f"  CARRY: {c['symbol']} {c['qty']:.4f}, funding {c['funding'] or 0:+.2f}")
 
 
@@ -168,11 +192,11 @@ def cmd_report(st):
     print(review.weekly_report(st, mkt().mode))
 
 
-def cmd_dashboard(st):
-    from core import dashboard
-    from core.settings import DASHBOARD_PORT
-    print(f"http://127.0.0.1:{DASHBOARD_PORT}  (Ctrl+C зогсооно)")
-    dashboard.serve(background=False)
+def cmd_migrate(st):
+    """v1 kept one person's data without an owner: hand it to the main admin (or argv[3])."""
+    from core import users
+    who = sys.argv[3] if len(sys.argv) > 3 else users.primary(users.load_users(markets.AVAILABLE)).name
+    print(f"{mkt().label}: {st.migrate_to_user(who)} мөр/түлхүүр → {who}")
 
 
 def cmd_telegram(st):
@@ -207,12 +231,53 @@ def cmd_telegram(st):
 
 
 def cmd_resetpeak(st):
-    eq = mkt().make_broker(st).equity()
-    st.set("peak_equity", eq)
-    print(f"Оргил equity = {eq:.2f}")
+    for acc in accounts(st):
+        eq = acc.broker.equity()
+        acc.set("peak_equity", eq)
+        print(f"{acc.name}: оргил equity = {eq:.2f}")
+
+
+def global_command(args) -> bool:
+    """Commands that span every market. Returns False if args aren't one."""
+    from core import auth, users
+    if args[:1] == ["web"]:
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+        from core import web
+        web.serve()
+        return True
+    if args[:1] == ["users"]:
+        everyone = users.load_users(markets.AVAILABLE)
+        for u in everyone:
+            active = []
+            for name in markets.AVAILABLE:
+                activate(markets.get(name))
+                if name in u.markets:
+                    active.append(name + ("" if u.name in {t.name for t in mkt().traders(everyone)} else " (түлхүүр алга)"))
+            print(f"{u.id:>2} {u.name:14} {u.role:6} нууц үг {'✅' if auth.has_password(u.name) else '❌'}  "
+                  f"Telegram {'✅' if u.telegram_chat_id else '❌'}  зах зээл: {', '.join(active) or '—'}")
+        return True
+    if args[:2] == ["user", "password"] and len(args) == 3:
+        import getpass
+        name = args[2].lower()
+        if not users.by_name(users.load_users(markets.AVAILABLE), name):
+            print(f"{name}: .env дотор ийм хэрэглэгч алга (USER<n>_NAME={name})")
+            return True
+        p1 = getpass.getpass(f"{name}-ийн шинэ нууц үг (≥{auth.MIN_PASSWORD}): ")
+        if p1 != getpass.getpass("Дахин: "):
+            print("Таарахгүй байна.")
+            return True
+        auth.set_password(name, p1)
+        print("✅ Хадгаллаа (hash хэлбэрээр).")
+        return True
+    return False
 
 
 def main():
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+    if global_command(sys.argv[1:]):
+        return
     if len(sys.argv) < 3 or sys.argv[1] not in markets.AVAILABLE:
         print(__doc__)
         return

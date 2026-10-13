@@ -32,16 +32,16 @@ def _base(sym: str) -> str:
 
 
 class PaperBroker:
-    def __init__(self, st: Storage):
-        self.st = st
+    def __init__(self, st: Storage, account):
+        self.st, self.acc = st, account
         start = float(os.getenv("PAPER_START_EQUITY") or mkt().cfg.get("paper_start_equity", 1000))
-        self.s = st.get("paper") or {}
+        self.s = account.get("paper") or {}
         self.s.setdefault("cash", start)
         for k in ("positions", "closed", "pending", "carry"):
             self.s.setdefault(k, {})
 
     def _save(self):
-        self.st.set("paper", self.s)
+        self.acc.set("paper", self.s)
 
     def price(self, symbol):
         return float(public_exchange().fetch_ticker(symbol)["last"])
@@ -205,11 +205,11 @@ class PaperBroker:
 
 
 class BinanceBroker:
-    def __init__(self, st: Storage):
-        API_KEY, API_SECRET, MODE = mkt().api_key, mkt().api_secret, mkt().mode
+    def __init__(self, st: Storage, account):
+        API_KEY, API_SECRET, MODE = account.creds.get("binance_key"), account.creds.get("binance_secret"), mkt().mode
         if not API_KEY or not API_SECRET:
-            raise RuntimeError(".env дотор BINANCE_API_KEY / BINANCE_API_SECRET алга байна")
-        self.st = st
+            raise RuntimeError(f"{account.name}: .env дотор USER<n>_CRYPTO_BINANCE_KEY / _SECRET алга байна")
+        self.st, self.acc = st, account
         opts = {"apiKey": API_KEY, "secret": API_SECRET, "enableRateLimit": True}
         ex = ccxt.binanceusdm({**opts, "options": {"disableFuturesSandboxWarning": True}})
         spot = ccxt.binance(opts)
@@ -249,7 +249,7 @@ class BinanceBroker:
         v = bal.get("info", {}).get("totalMarginBalance")
         total = float(v) if v is not None else float(bal["total"].get("USDT", 0))
         # carry spot legs live in the spot wallet; count them so the kill switch sees the hedge
-        for c in self.st.open_carries(mkt().mode):
+        for c in self.st.open_carries(mkt().mode, self.acc.name):
             total += c["qty"] * self.price(c["symbol"])
         return total
 
@@ -438,5 +438,5 @@ class BinanceBroker:
         return total, last
 
 
-def make_broker(st: Storage):
-    return PaperBroker(st) if mkt().mode == "signal" else BinanceBroker(st)
+def make_broker(st: Storage, account):
+    return PaperBroker(st, account) if mkt().mode == "signal" else BinanceBroker(st, account)

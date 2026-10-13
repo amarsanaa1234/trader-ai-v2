@@ -1,15 +1,17 @@
-"""Telegram commands from your phone. Only messages from TELEGRAM_CHAT_ID are
-obeyed; anything else is ignored."""
+"""Telegram commands from phones. A message is obeyed only if it comes from a
+chat that belongs to a configured user (USER<n>_TELEGRAM_CHAT_ID); each person's
+commands act on their own account only. Admins have a few extra commands."""
 import logging
 
 import requests
 
-from .settings import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+from . import users as users_mod
+from .settings import TELEGRAM_BOT_TOKEN
 
 log = logging.getLogger(__name__)
 
 HELP = """Командууд:
-/status – equity, position, допамин
+/status – данс, position, допамин
 /stop – шинэ арилжаа нээхийг зогсооно (нээлттэйг stop/tp-ээр нь үлдээнэ)
 /resume – дахин эхлүүлнэ
 /closeall – бүх position-ыг хаах (баталгаажуулалт асууна)
@@ -17,13 +19,18 @@ HELP = """Командууд:
 /resetpeak – 30%-ийн drawdown зогсолтыг шалгаад дахин нээх
 /help – энэ жагсаалт"""
 
+ADMIN_HELP = """
+👑 Админ:
+/users – хэрэглэгчид, тэдний данс
+/emergency – БҮХ хүний бүх арилжааг зогсоож хаах (баталгаажуулалт асууна)"""
+
 
 def enabled() -> bool:
-    return bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
+    return bool(TELEGRAM_BOT_TOKEN)
 
 
-def poll(st) -> list[str]:
-    """New commands since the last poll (non-blocking)."""
+def poll(st) -> list[tuple]:
+    """New commands since the last poll (non-blocking): [(User, "/command"), ...]."""
     if not enabled():
         return []
     offset = st.get("tg_offset", 0)
@@ -35,14 +42,16 @@ def poll(st) -> list[str]:
     except Exception as e:
         log.debug("telegram poll: %s", e)
         return []
+    everyone = users_mod.load_users()
     cmds = []
     for u in updates:
         offset = max(offset, u["update_id"] + 1)
         msg = u.get("message") or {}
-        if str(msg.get("chat", {}).get("id")) != str(TELEGRAM_CHAT_ID):
-            continue  # not you
+        who = users_mod.by_chat(everyone, msg.get("chat", {}).get("id"))
+        if who is None:
+            continue  # a stranger: ignored
         text = (msg.get("text") or "").strip().split("@")[0].lower()
         if text.startswith("/"):
-            cmds.append(text)
+            cmds.append((who, text))
     st.set("tg_offset", offset)
     return cmds

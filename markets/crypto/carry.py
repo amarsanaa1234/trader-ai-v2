@@ -47,9 +47,9 @@ def scan() -> list[dict]:
     return sorted(out, key=lambda x: -x["apr"])
 
 
-def manage(st: Storage, broker, equity: float, halted: bool, allow_new: bool = True) -> None:
+def manage(st: Storage, broker, equity: float, halted: bool, allow_new: bool = True, user: str | None = None) -> None:
     """Called every hour: collect funding, exit weak carries, maybe open new ones."""
-    open_c = {c["symbol"]: c for c in st.open_carries(mkt().mode)}
+    open_c = {c["symbol"]: c for c in st.open_carries(mkt().mode, user)}
 
     for sym, c in open_c.items():
         # 1) book funding received
@@ -72,11 +72,11 @@ def manage(st: Storage, broker, equity: float, halted: bool, allow_new: bool = T
         elif halted:
             reason = "kill switch"
         if reason:
-            close(st, broker, c, reason)
+            close(st, broker, c, reason, user)
 
     if halted or not allow_new:
         return
-    carry_notional = sum(c["qty"] * c["perp_entry"] for c in st.open_carries(mkt().mode))
+    carry_notional = sum(c["qty"] * c["perp_entry"] for c in st.open_carries(mkt().mode, user))
     for cand in scan():
         if cand["apr"] < _cfg()["min_apr"] or cand["symbol"] in open_c:
             continue
@@ -87,18 +87,18 @@ def manage(st: Storage, broker, equity: float, halted: bool, allow_new: bool = T
         try:
             r = broker.carry_open(cand["symbol"], notional)
         except Exception as e:
-            notify(f"❌ Carry {cand['symbol']} нээж чадсангүй: {e}", key=f"carryerr{cand['symbol']}", every_sec=21600)
+            notify(to=user, text=f"❌ Carry {cand['symbol']} нээж чадсангүй: {e}", key=f"carryerr{cand['symbol']}", every_sec=21600)
             continue
-        st.insert_carry({"mode": mkt().mode, "symbol": cand["symbol"], "qty": r["qty"], "spot_entry": r["spot_px"],
+        st.insert_carry({"mode": mkt().mode, "user": user, "symbol": cand["symbol"], "qty": r["qty"], "spot_entry": r["spot_px"],
                          "perp_entry": r["perp_px"], "opened_ts": now_ms(), "status": "open", "fees": r["fees"],
                          "funding": 0.0, "last_funding_ts": now_ms()})
         carry_notional += notional
-        notify("\n".join(["🏦 CARRY НЭЭЛЭЭ", f"{cand['symbol'].split('/')[0]} · spot худалдан авалт + futures short", "",
+        notify(to=user, text="\n".join(["🏦 CARRY НЭЭЛЭЭ", f"{cand['symbol'].split('/')[0]} · spot худалдан авалт + futures short", "",
                           f"Хэмжээ:   {notional:,.0f} $", f"Funding:  ≈ {cand['apr']:.1%} жилд",
                           "Үнийн хөдөлгөөн тэглэгдэж, funding-ийн орлого үлдэнэ"]))
 
 
-def close(st: Storage, broker, c: dict, reason: str) -> None:
+def close(st: Storage, broker, c: dict, reason: str, user: str | None = None) -> None:
     r = broker.carry_close(c["symbol"], c["qty"])
     if r is None:
         r = {"spot_px": c["spot_entry"], "perp_px": c["perp_entry"], "fees": 0.0}
@@ -106,7 +106,7 @@ def close(st: Storage, broker, c: dict, reason: str) -> None:
     fees = (c["fees"] or 0) + r["fees"]
     pnl = price_pnl + (c["funding"] or 0) - fees
     st.update_carry(c["id"], status="closed", closed_ts=now_ms(), pnl=pnl, fees=fees, note=reason)
-    notify("\n".join(["🏦 CARRY ХААЛАА", f"{c['symbol'].split('/')[0]}", "", f"Шалтгаан:  {reason}",
+    notify(to=user, text="\n".join(["🏦 CARRY ХААЛАА", f"{c['symbol'].split('/')[0]}", "", f"Шалтгаан:  {reason}",
                       f"Funding:   {c['funding'] or 0:+.2f} $", f"Шимтгэл:   {-fees:+.2f} $", f"Нийт:      {pnl:+.2f} $"]))
 
 

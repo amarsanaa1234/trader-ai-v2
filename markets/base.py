@@ -35,6 +35,7 @@ class Market:
     rule_columns: tuple = ()
     rule_help: str = ""
     schema: str = ""          # extra SQL tables this market stores
+    credentials: tuple = ()   # per-user keys this market needs, read as USER<n>_<MARKET>_<KEY>
 
     def __init__(self):
         cfg_path = Path(__file__).resolve().parent / self.name / "config.yaml"
@@ -96,6 +97,18 @@ class Market:
     def library_path(self) -> Path:
         return self.data_dir / "strategy_library.json"
 
+    # ---------- people ----------
+    def account_creds(self, user) -> dict | None:
+        """The user's keys for this market, {} in paper ("signal") mode, None if missing."""
+        if self.mode == "signal":
+            return {}
+        vals = {k.lower(): user.cred(self.name, k) for k in self.credentials}
+        return vals if all(vals.values()) else None
+
+    def traders(self, users) -> list:
+        """Users who trade this market right now (asked for it and have the keys)."""
+        return [u for u in users if self.name in u.markets and self.account_creds(u) is not None]
+
     # ---------- strategy plug ----------
     def sources(self, df: pd.DataFrame, p: dict) -> dict:
         """Market-specific evidence in [-1, 1], keyed by source_names."""
@@ -128,7 +141,8 @@ class Market:
         return True
 
     # ---------- execution & extras ----------
-    def make_broker(self, st):
+    def make_broker(self, st, account):
+        """Broker for one person's account (account.user, account.creds, account.get/set state)."""
         raise NotImplementedError
 
     def hourly(self, trader, equity: float, day: dict) -> None:

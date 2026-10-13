@@ -40,12 +40,33 @@ class Storage:
         self.db = sqlite3.connect(path or market.db_path, timeout=30, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA + market.schema)
-        cols = {r["name"] for r in self.db.execute("PRAGMA table_info(trades)")}
-        for name, kind in (("dist", "REAL"), ("best", "REAL"), ("partial_done", "INTEGER DEFAULT 0"),
-                           ("review", "TEXT"), ("regime", "INTEGER")):
-            if name not in cols:
-                self.db.execute(f"ALTER TABLE trades ADD COLUMN {name} {kind}")
+        self._add_columns("trades", (("dist", "REAL"), ("best", "REAL"), ("partial_done", "INTEGER DEFAULT 0"),
+                                     ("review", "TEXT"), ("regime", "INTEGER"), ("user", "TEXT")))
+        self._add_columns("equity_log", (("user", "TEXT"),))
+        self._add_columns("carry", (("user", "TEXT"),))
         self.db.commit()
+
+    def _add_columns(self, table, columns):
+        have = {r["name"] for r in self.db.execute(f"PRAGMA table_info({table})")}
+        for name, kind in columns:
+            if name not in have:
+                self.db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")
+
+    # State that belongs to one person's account is stored as "<user>:<key>".
+    ACCOUNT_KEYS = ("day", "peak_equity", "paused", "paper", "dopamine", "closeall_asked")
+
+    def migrate_to_user(self, user: str) -> int:
+        """One-time: give v1 single-user rows and state to `user`. Returns rows touched."""
+        n = 0
+        for table in ("trades", "equity_log", "carry"):
+            n += self.db.execute(f"UPDATE {table} SET user=? WHERE user IS NULL", (user,)).rowcount
+        keys = [r["key"] for r in self.db.execute("SELECT key FROM state")]
+        for k in keys:
+            if k in self.ACCOUNT_KEYS or k.startswith("pending:"):   # migrated keys start with "<user>:"
+                self.db.execute("UPDATE OR REPLACE state SET key=? WHERE key=?", (f"{user}:{k}", k))
+                n += 1
+        self.db.commit()
+        return n
 
     # ---- key/value state ----
     def get(self, key, default=None):
@@ -94,9 +115,10 @@ class Storage:
             "SELECT * FROM sentiment WHERE asset IN (?, 'MARKET') AND ts>=?", (asset, since_ms)).fetchall()
 
     # ---- trades ----
-    def open_trades(self, mode):
+    def open_trades(self, mode, user=None):
         return [dict(r) for r in self.db.execute(
-            "SELECT * FROM trades WHERE status='open' AND mode=?", (mode,)).fetchall()]
+            "SELECT * FROM trades WHERE status='open' AND mode=? AND (? IS NULL OR user=?)",
+            (mode, user, user)).fetchall()]
 
     def insert_trade(self, t: dict) -> int:
         cols = ", ".join(t.keys())
@@ -110,22 +132,26 @@ class Storage:
         self.db.execute(f"UPDATE trades SET {sets} WHERE id=?", [*fields.values(), trade_id])
         self.db.commit()
 
-    def trades_since(self, mode, since_ms):
+    def trades_since(self, mode, since_ms, user=None):
         return [dict(r) for r in self.db.execute(
-            "SELECT * FROM trades WHERE mode=? AND opened_ts>=? ORDER BY opened_ts", (mode, since_ms)).fetchall()]
+            "SELECT * FROM trades WHERE mode=? AND opened_ts>=? AND (? IS NULL OR user=?) ORDER BY opened_ts",
+            (mode, since_ms, user, user)).fetchall()]
 
-    def log_equity(self, mode, equity, dopamine):
-        self.db.execute("INSERT INTO equity_log VALUES (?, ?, ?, ?)", (now_ms(), mode, equity, dopamine))
+    def log_equity(self, mode, equity, dopamine, user=None):
+        self.db.execute("INSERT INTO equity_log (ts, mode, equity, dopamine, user) VALUES (?, ?, ?, ?, ?)",
+                        (now_ms(), mode, equity, dopamine, user))
         self.db.commit()
 
-    def equity_history(self, mode, since_ms=0):
+    def equity_history(self, mode, since_ms=0, user=None):
         return [dict(r) for r in self.db.execute(
-            "SELECT ts, equity, dopamine FROM equity_log WHERE mode=? AND ts>=? ORDER BY ts", (mode, since_ms))]
+            "SELECT ts, equity, dopamine FROM equity_log WHERE mode=? AND ts>=? AND (? IS NULL OR user=?) ORDER BY ts",
+            (mode, since_ms, user, user))]
 
     # ---- carry ----
-    def open_carries(self, mode):
+    def open_carries(self, mode, user=None):
         return [dict(r) for r in self.db.execute(
-            "SELECT * FROM carry WHERE status='open' AND mode=?", (mode,)).fetchall()]
+            "SELECT * FROM carry WHERE status='open' AND mode=? AND (? IS NULL OR user=?)",
+            (mode, user, user)).fetchall()]
 
     def insert_carry(self, c: dict) -> int:
         cols = ", ".join(c.keys())
@@ -138,7 +164,7 @@ class Storage:
         self.db.execute(f"UPDATE carry SET {sets} WHERE id=?", [*fields.values(), carry_id])
         self.db.commit()
 
-    def closed_trades(self, mode, limit=50):
+    def closed_trades(self, mode, limit=50, user=None):
         return [dict(r) for r in self.db.execute(
-            "SELECT * FROM trades WHERE mode=? AND status='closed' ORDER BY closed_ts DESC LIMIT ?",
-            (mode, limit)).fetchall()]
+            "SELECT * FROM trades WHERE mode=? AND status='closed' AND (? IS NULL OR user=?) "
+            "ORDER BY closed_ts DESC LIMIT ?", (mode, user, user, limit)).fetchall()]

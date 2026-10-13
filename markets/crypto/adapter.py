@@ -39,6 +39,12 @@ class Crypto(Market):
     rule_columns = ("funding", "fng")
     rule_help = "funding (8h funding rate, e.g. 0.0001), fng (Fear&Greed 0-100)"
     schema = data.SCHEMA
+    credentials = ("BINANCE_KEY", "BINANCE_SECRET")
+
+    def account_creds(self, user) -> dict | None:
+        if user.legacy and self.mode != "signal":   # v1-style single-user .env
+            return {"binance_key": self.api_key, "binance_secret": self.api_secret} if self.api_key else None
+        return super().account_creds(user)
 
     # ---------- config ----------
     @property
@@ -96,22 +102,23 @@ class Crypto(Market):
         return {s: t.get("last") for s, t in tickers.items()}
 
     # ---------- execution & extras ----------
-    def make_broker(self, st):
+    def make_broker(self, st, account):
         from .broker import make_broker
-        return make_broker(st)
+        return make_broker(st, account)
 
     def hourly(self, trader, equity: float, day: dict) -> None:
         if not self.carry_cfg["enabled"]:
             return
         from . import carry
         try:
-            carry.manage(trader.st, trader.broker, equity, day["halted"], allow_new=not trader.paused())
+            carry.manage(trader.st, trader.broker, equity, day["halted"], allow_new=not trader.paused(),
+                         user=trader.acc.name)
         except Exception as e:
-            log.warning("Carry: %s", e)
+            log.warning("Carry (%s): %s", trader.acc.name, e)
 
     def close_carry(self, trader, carry_row: dict, reason: str) -> None:
         from . import carry
-        carry.close(trader.st, trader.broker, carry_row, reason)
+        carry.close(trader.st, trader.broker, carry_row, reason, user=trader.acc.name)
 
     def dashboard_extras(self, st) -> dict:
         from . import strategy2

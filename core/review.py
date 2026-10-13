@@ -54,12 +54,12 @@ def review_trade(st: Storage, trade_id: int) -> str | None:
     return lesson
 
 
-def weekly_stats(st: Storage, mode: str) -> dict:
+def weekly_stats(st: Storage, mode: str, user: str | None = None) -> dict:
     since = now_ms() - 7 * 86_400_000
-    trades = [t for t in st.trades_since(mode, since) if t["status"] == "closed"]
+    trades = [t for t in st.trades_since(mode, since, user) if t["status"] == "closed"]
     rs = [t["r_multiple"] or 0 for t in trades]
     pnl = sum(t["pnl"] or 0 for t in trades)
-    eq = st.equity_history(mode, since)
+    eq = st.equity_history(mode, since, user)
     by_reason = {}
     for t in trades:
         by_reason[t["exit_reason"]] = by_reason.get(t["exit_reason"], 0) + 1
@@ -69,8 +69,8 @@ def weekly_stats(st: Storage, mode: str) -> dict:
             "exits": by_reason, "notes": [t["review"] for t in trades if t.get("review")][:20]}
 
 
-def weekly_report(st: Storage, mode: str) -> str:
-    s = weekly_stats(st, mode)
+def weekly_report(st: Storage, mode: str, user: str | None = None) -> str:
+    s = weekly_stats(st, mode, user)
     head = (f"📅 7 хоногийн тайлан: {s['trades']} арилжаа, ялалт {s['wins']}, {s['pnl_usdt']:+.2f} USDT, "
             f"дундаж {s['avg_r']:+.2f}R, equity {s['equity_change']:+.2%}")
     if not ai.enabled() or s["trades"] == 0:

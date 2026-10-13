@@ -87,6 +87,7 @@ def check_entry(
     max_corr_same_side: float = 0.0,
     blackout: str | None = None,
     paused: bool = False,
+    risk_per_trade: float | None = None,
 ) -> Decision:
     """side: +1 long, -1 short. Returns the allowed quantity (base units)."""
     if paused:
@@ -119,7 +120,9 @@ def check_entry(
     if dd_mult == 0.0:
         return Decision(False, reason=f"оргилоосоо {DRAWDOWN_HALT:.0%} унасан тул зогслоо. "
                                       "Шалгаад /resetpeak гэж бичнэ үү")
-    risk_frac = RISK_PER_TRADE * dd_mult
+    # a person may choose LESS risk than the global 1%, never more
+    base = min(RISK_PER_TRADE, risk_per_trade) if risk_per_trade else RISK_PER_TRADE
+    risk_frac = base * dd_mult
     if max_corr_same_side >= CORRELATED:
         risk_frac *= CORRELATED_RISK_SCALE
     risk_frac = min(risk_frac, lim["max_total_open_risk"] - open_risk / equity)
