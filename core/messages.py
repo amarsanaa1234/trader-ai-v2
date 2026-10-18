@@ -1,5 +1,6 @@
 """Telegram message layouts: a title line, then one fact per line."""
 from .settings import base_asset
+from .context import mkt
 
 SIDE_WORD = {1: "LONG 📈", -1: "SHORT 📉"}
 PART_LABEL = {
@@ -108,7 +109,7 @@ def daily(date, change, change_usd, equity, dop, mood, closed_today: int) -> str
         f"📊 ӨДРИЙН ДҮН · {date}",
         "",
         f"Дүн:        {change:+.2%} ({usd(change_usd)})",
-        f"Данс:       {equity:,.2f} USDT",
+        f"Данс:       {equity:,.2f} {mkt().currency}",
         f"Хаагдсан:   {closed_today} арилжаа",
         f"🧠 Допамин: {dop:+.2f} {mood}",
     ])
@@ -120,7 +121,7 @@ def startup(mode, symbols, equity) -> str:
         "",
         f"Горим:  {mode}",
         f"Койн:   {', '.join(base_asset(s) for s in symbols)}",
-        f"Данс:   {equity:,.2f} USDT",
+        f"Данс:   {equity:,.2f} {mkt().currency}",
         "/status · /help",
     ])
 

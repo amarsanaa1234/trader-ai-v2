@@ -10,6 +10,7 @@ import numpy as np
 
 from . import ai
 from .settings import REVIEW_LANG
+from .context import mkt
 from .storage import Storage, now_ms
 
 log = logging.getLogger(__name__)
@@ -71,7 +72,7 @@ def weekly_stats(st: Storage, mode: str, user: str | None = None) -> dict:
 
 def weekly_report(st: Storage, mode: str, user: str | None = None) -> str:
     s = weekly_stats(st, mode, user)
-    head = (f"📅 7 хоногийн тайлан: {s['trades']} арилжаа, ялалт {s['wins']}, {s['pnl_usdt']:+.2f} USDT, "
+    head = (f"📅 7 хоногийн тайлан: {s['trades']} арилжаа, ялалт {s['wins']}, {s['pnl_usdt']:+.2f} {mkt().currency}, "
             f"дундаж {s['avg_r']:+.2f}R, equity {s['equity_change']:+.2%}")
     if not ai.enabled() or s["trades"] == 0:
         return head

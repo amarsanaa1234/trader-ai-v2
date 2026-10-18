@@ -476,7 +476,7 @@ class Trader:
         lines = [
             f"📊 СТАТУС · {datetime.now().strftime('%m/%d %H:%M')}",
             "",
-            f"💰 Данс:     {equity:,.2f} USDT",
+            f"💰 Данс:     {equity:,.2f} {mkt().currency}",
             f"📅 Өнөөдөр:  {equity / start - 1:+.2%} ({equity - start:+,.2f} $)",
             f"🧠 Допамин:  {dop:+.2f} {reward.mood(dop)}",
             f"{state} · position {len(trades)}/{risk_guard.limits()['max_open_positions']}",

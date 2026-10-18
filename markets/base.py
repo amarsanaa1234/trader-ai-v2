@@ -58,6 +58,11 @@ class Market:
         return [s.strip() for s in raw.split(",") if s.strip()] if raw else list(self.cfg.get("symbols", []))
 
     @property
+    def currency(self) -> str:
+        """What account money is counted in (shown in messages and on the dashboard)."""
+        return self.cfg.get("currency", "USDT")
+
+    @property
     def timeframe(self) -> str:
         return self.env("timeframe") or self.cfg.get("timeframe", "1h")
 

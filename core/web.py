@@ -217,7 +217,10 @@ def market_page(name: str, request: Request):
         inject += f'<div style="max-width:1200px;margin:8px auto;padding:0 16px" class="muted">👑 {esc(who)}-ийн данс</div>'
     text = MARKET_PAGE.read_text(encoding="utf-8")
     text = text.replace("<body>", "<body>" + inject, 1).replace('fetch("/api/data")', "fetch(window.API_URL)")
-    text = text.replace("<title>Crypto AI Dashboard</title>", f"<title>{esc(markets.get(name).label)} · Trader AI</title>")
+    m = markets.get(name)
+    text = text.replace("<title>Crypto AI Dashboard</title>", f"<title>{esc(m.label)} · Trader AI</title>")
+    text = text.replace("<h1>🤖 Crypto AI</h1>", f"<h1>{esc(m.label)}</h1>")
+    text = text.replace('" USDT"', json.dumps(" " + m.currency))
     return HTMLResponse(text, headers={"Cache-Control": "no-store"})
 
 

@@ -4,6 +4,7 @@
 # USER<n>_FX_OANDA_TOKEN / _ACCOUNT is used (or FX_OANDA_TOKEN / FX_OANDA_ACCOUNT).
 
 label: "💱 Валют"
+currency: AUD           # the OANDA account's currency
 mode: signal            # signal (paper, real prices) | demo (OANDA practice account) | live
 symbols:                # the 5 most traded pairs + 5 more so there are enough trades to judge
   - EUR_USD
