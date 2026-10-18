@@ -17,7 +17,8 @@ DAY_MS = 86_400_000
 
 
 def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None = None,
-        start_equity: float = 10_000.0, feats: dict | None = None) -> dict:
+        start_equity: float = 10_000.0, feats: dict | None = None, risk_per_trade: float | None = None,
+        with_curve: bool = False) -> dict:
     m = mkt()
     S = {}
     for sym, df in frames.items():
@@ -81,7 +82,7 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
                     dec = risk_guard.check_entry(
                         equity=equity, entry=entry, stop=entry - side * dist, side=side, open_positions=len(pos),
                         open_notional=sum(q["qty"] * q["entry"] for q in pos.values()), trades_today=trades_today,
-                        halted=halted, peak_equity=peak,
+                        halted=halted, peak_equity=peak, risk_per_trade=risk_per_trade,
                         open_risk=sum(q["qty"] * max(0.0, q["side"] * (q["entry"] - q["stop"])) for q in pos.values()),
                         same_currency_risk=risk_guard.currency_risk(legs, sym, side)
                         if risk_guard.max_currency_risk() is not None else 0.0)
@@ -134,7 +135,9 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
     curve = np.asarray(curve)
     rs = [x["r"] for x in trades]
     dd = max_drawdown(curve) if len(curve) else 0.0
-    return {"return": round(float(curve[-1] / start_equity - 1), 4) if len(curve) else 0.0,
+    extra = {"curve": curve, "times": np.asarray(timeline), "trade_times": [x["ts"] for x in trades]} \
+        if with_curve else {}
+    return {**extra, "return": round(float(curve[-1] / start_equity - 1), 4) if len(curve) else 0.0,
             "max_dd": round(dd, 4), "trades": len(trades),
             "avg_r": round(float(np.mean(rs)), 3) if rs else 0.0,
             "score": round(strategy_score(rs, dd), 3),
