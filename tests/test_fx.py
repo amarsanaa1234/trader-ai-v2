@@ -106,11 +106,11 @@ def test_macro_values_only_after_publication(fx_db):
 
 def test_fx_risk_bounds(fx_db):
     lev, lo, hi = rg.market_bounds()
-    assert lev == 2 and lo == pytest.approx(0.0008)
-    # a 0.15% stop is refused for crypto but fine for FX; size stays within 2x leverage
+    assert lev == 3 and lo == pytest.approx(0.0008)
+    # a 0.15% stop is refused for crypto but fine for FX; size stays within 3x leverage
     d = rg.check_entry(equity=10_000, entry=1.1, stop=1.1 * (1 - 0.0015), side=1, open_positions=0,
                        open_notional=0, trades_today=0, halted=False, peak_equity=10_000)
-    assert d.allowed and d.qty * 1.1 <= 10_000 * 2 + 1e-6
+    assert d.allowed and d.qty * 1.1 <= 10_000 * 3 + 1e-6
     context.activate(markets.get("crypto"))
     assert not rg.check_entry(equity=10_000, entry=1.1, stop=1.1 * (1 - 0.0015), side=1, open_positions=0,
                               open_notional=0, trades_today=0, halted=False, peak_equity=10_000).allowed

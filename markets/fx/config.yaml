@@ -39,7 +39,7 @@ costs:                  # fractions of price, per side: about half the typical s
 risk:                   # FX moves ~0.1%/hour, so crypto's 0.3% minimum stop would refuse everything
   min_stop_distance: 0.0008   # 0.08%
   max_stop_distance: 0.03
-  max_leverage: 2             # owner's choice (2026-10-13)
+  max_leverage: 3             # owner's choice (2026-10-18; was 2)
   max_spread: 0.0004          # no new entry while the live spread is wider than 0.04% of price
   ladder:                     # risk per trade steps with the last 30 closed trades
     levels: [0.005, 0.01]     # start at 0.5%, never above 1%
