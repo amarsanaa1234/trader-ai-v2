@@ -114,6 +114,20 @@ def test_macro_values_only_after_publication(fx_db):
     assert macro.cot_net(fx_db, "USD_JPY", at).round(6).tolist()[1] == 0.1   # USD counts as 0
 
 
+def test_month_end_fires_in_the_last_two_business_days(fx_db):
+    """Regression: a time-unit slip once made this source silently always 0."""
+    step = 4 * 3_600_000
+    spx_ts = list(range(ms(2026, 8, 25, 0), ms(2026, 10, 1, 0), step))  # includes the month's start price
+    rows = [(t, 100 + k * 0.1, 100 + k * 0.1, 100 + k * 0.1, 100 + k * 0.1, 1) for k, t in enumerate(spx_ts)]
+    fx_db.insert_candles("SPX500_USD", "4h", rows)                      # stocks rose all month
+    ts = list(range(ms(2026, 9, 1, 0), ms(2026, 10, 1, 0), step))
+    v = data._month_end(fx_db, "EUR_USD", "4h", pd.Index(ts))
+    closes = pd.to_datetime(pd.Index(ts) + step, unit="ms", utc=True)
+    fired = closes[v != 0]
+    assert len(fired) > 0 and set(fired.day) <= {29, 30}               # Sep 29-30 2026 (Tue, Wed)
+    assert (v[v != 0] == 1.0).all()            # funds sell USD after a stock rally -> EUR_USD up
+
+
 def test_fx_risk_bounds(fx_db):
     lev, lo, hi = rg.market_bounds()
     assert lev == 3 and lo == pytest.approx(0.0008)

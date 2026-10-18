@@ -295,7 +295,7 @@ def _month_end(st: Storage, symbol: str, tf: str, index: pd.Index) -> np.ndarray
     close_t = pd.to_datetime(index + TF_MS[tf], unit="ms", utc=True)
     spx_now = pd.Series(_at_close(spx, index, tf, TF_MS[tf]), index=index)
     month_start = close_t.tz_localize(None).to_period("M").to_timestamp().tz_localize("UTC")
-    ms_idx = pd.Index((month_start.asi8 // 1_000_000).astype("int64"))
+    ms_idx = pd.Index(month_start.as_unit("ms").asi8)   # epoch ms whatever pandas' internal unit is
     spx_ms = pd.Series(_at_close(spx, ms_idx - TF_MS[tf], tf, TF_MS[tf]), index=index)
     mtd = spx_now / spx_ms - 1
     last_bd = (close_t + pd.offsets.BMonthEnd(0)).normalize()
