@@ -224,8 +224,15 @@ def cmd_telegram(st):
     chat = chats[-1]
     env = ROOT / ".env"
     text = env.read_text(encoding="utf-8") if env.exists() else ""
-    line = f"TELEGRAM_CHAT_ID={chat['id']}"
-    text = re.sub(r"(?m)^TELEGRAM_CHAT_ID=.*$", line, text) if "TELEGRAM_CHAT_ID=" in text else text + f"\n{line}\n"
+    # multi-user .env: the chat belongs to the main admin (USER<n>_TELEGRAM_CHAT_ID)
+    from core import users
+    lead = users.primary(users.load_users(markets.AVAILABLE))
+    key = "TELEGRAM_CHAT_ID" if lead is None or lead.legacy else f"USER{lead.id}_TELEGRAM_CHAT_ID"
+    line = f"{key}={chat['id']}"
+    if re.search(rf"(?m)^{key}=", text):
+        text = re.sub(rf"(?m)^{key}=.*$", line, text)
+    else:
+        text = text.rstrip("\n") + f"\n{line}\n"
     env.write_text(text, encoding="utf-8")
     requests.post(f"{api}/sendMessage", timeout=15, json={
         "chat_id": chat["id"], "text": "✅ Trader AI v2 холбогдлоо! /help гэж бичээд командуудыг харна уу."})
