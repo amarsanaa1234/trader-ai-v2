@@ -1,5 +1,13 @@
-# /etc/caddy/Caddyfile — HTTPS in front of the web app (login required for everything but /public)
+# /etc/caddy/Caddyfile — HTTPS in front of the web apps (certificates are automatic)
+
+# v1 public dashboard (unchanged)
 209-38-85-71.sslip.io {
 	encode gzip
 	reverse_proxy 127.0.0.1:8765
+}
+
+# Trader AI v2 (login required for everything but /public)
+v2.209-38-85-71.sslip.io {
+	encode gzip
+	reverse_proxy 127.0.0.1:8766
 }

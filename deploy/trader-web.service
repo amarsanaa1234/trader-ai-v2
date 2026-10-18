@@ -8,8 +8,11 @@ User=bot
 WorkingDirectory=/opt/trader_ai_v2
 ExecStart=/opt/trader_ai_v2/.venv/bin/python main.py web
 Environment=PYTHONUTF8=1
+# 8765 is the v1 dashboard on the same droplet
+Environment=DASHBOARD_PORT=8766
 Restart=always
 RestartSec=10
+Nice=5
 
 [Install]
 WantedBy=multi-user.target

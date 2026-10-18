@@ -1,0 +1,18 @@
+[Unit]
+Description=Trader AI v2 · FX bot (OANDA)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=bot
+WorkingDirectory=/opt/trader_ai_v2
+ExecStart=/opt/trader_ai_v2/.venv/bin/python main.py fx run
+Environment=PYTHONUTF8=1
+Restart=always
+RestartSec=30
+# shares the droplet with v1: v1 always gets the CPU first
+Nice=10
+CPUWeight=50
+
+[Install]
+WantedBy=multi-user.target
