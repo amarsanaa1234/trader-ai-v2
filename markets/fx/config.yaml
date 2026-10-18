@@ -54,7 +54,7 @@ validation:             # "too few trades proves nothing": stricter than crypto
   min_fold_trades: 40
   min_vault_trades: 60
   portfolio: true         # the shared-account vault (core/portfolio.py) must also be profitable
-  max_p_value: 0.10       # and the edge must beat 90% of random-entry runs (core/significance.py)
+  max_p_value: 0.20       # and the edge must beat 80% of random-entry runs (core/significance.py; owner's choice 2026-10-18, was 90%)
   random_runs: 100
 
 # No new entries (backtest and live): the daily rollover, when spreads widen a lot,
