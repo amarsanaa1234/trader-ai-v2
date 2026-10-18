@@ -155,23 +155,32 @@ def improve(st, symbols, dopamine: float = 0.0, seed: int | None = None) -> dict
         scored.append((validation.walk_forward(frames, ens), ens))
         scored.sort(key=lambda x: -x[0]["score"])
 
-    passed = []
+    passed, checked = [], []
     for wf, cand in scored[:10]:
         if wf["score"] <= cur_wf["score"] or wf["positive_folds"] < MIN_POSITIVE_FOLDS:
             continue
         v = validation.vault(frames, cand)
-        if (v["score"] > cur_vault["score"] + PROMOTE_MARGIN and v["trades"] >= min_vault_trades()
-                and v["return"] > 0 and v["max_dd"] < MAX_VAULT_DD):
+        why = None
+        if v["score"] <= cur_vault["score"] + PROMOTE_MARGIN:
+            why = "vault оноо одоогийнхоос дээр биш"
+        elif v["trades"] < min_vault_trades():
+            why = "vault дээр арилжаа цөөн"
+        elif v["return"] <= 0 or v["max_dd"] >= MAX_VAULT_DD:
+            why = "vault алдагдалтай / уналт их"
+        else:
             ok, extra = extra_gates(frames, cand)
             v.update(extra)
             if ok:
                 passed.append((wf, v, cand))
-            if len(passed) >= 3:
-                break
+            else:
+                why = "нэг данс эсвэл санамсаргүйтэй харьцуулалтад тэнцээгүй"
+        checked.append({"walk_forward": wf, "vault": v, "ensemble": bool(cand.get("ensemble")), "rejected": why})
+        if len(passed) >= 3:
+            break
 
     report = {"current": {"walk_forward": cur_wf, "vault": cur_vault}, "candidates": n,
               "best_walk_forward": scored[0][0] if scored else None, "pattern_edges": edges,
-              "library_approved": [s["name"] for s in library.approved()], "new_shadows": [],
+              "library_approved": [s["name"] for s in library.approved()], "new_shadows": [], "checked": checked,
               "lessons": lessons}
 
     if not mkt().params_path.exists() and passed:

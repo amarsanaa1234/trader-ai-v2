@@ -99,7 +99,10 @@ def _book_at(symbol: str, ts_s: int | None, kind: str = "book"):
     except OandaError as e:
         log.debug("%s %s %s: %s", symbol, endpoint, ts_s, e)
         return None
-    v = value(b)
+    try:
+        v = value(b)
+    except (ValueError, KeyError, TypeError):   # a few old snapshots have empty fields
+        return None
     if v is None:
         return None
     ts = b.get("unixTime") or pd.Timestamp(b["time"]).timestamp()   # the books ignore the UNIX header
@@ -177,8 +180,10 @@ def _at_close(series: pd.Series, index: pd.Index, tf: str, step_ms: int | None =
     known = series.copy()
     if step_ms is not None:
         known.index = known.index + step_ms
-    at = index + TF_MS[tf]
-    return known.reindex(known.index.union(at)).ffill().reindex(at).to_numpy()
+    at = pd.Index(index + TF_MS[tf])
+    uniq = at.unique()   # the month-end lookup asks for the same moment many times
+    known = known[~known.index.duplicated(keep="last")]
+    return known.reindex(known.index.union(uniq)).ffill().reindex(uniq).reindex(at).to_numpy()
 
 
 def _hold_cost(st: Storage, symbol: str, index: pd.Index, tf: str) -> np.ndarray:
@@ -289,7 +294,7 @@ def _month_end(st: Storage, symbol: str, tf: str, index: pd.Index) -> np.ndarray
         return np.zeros(len(index))
     close_t = pd.to_datetime(index + TF_MS[tf], unit="ms", utc=True)
     spx_now = pd.Series(_at_close(spx, index, tf, TF_MS[tf]), index=index)
-    month_start = close_t.to_period("M").to_timestamp().tz_localize("UTC")
+    month_start = close_t.tz_localize(None).to_period("M").to_timestamp().tz_localize("UTC")
     ms_idx = pd.Index((month_start.asi8 // 1_000_000).astype("int64"))
     spx_ms = pd.Series(_at_close(spx, ms_idx - TF_MS[tf], tf, TF_MS[tf]), index=index)
     mtd = spx_now / spx_ms - 1
