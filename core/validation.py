@@ -12,6 +12,7 @@ The vault is only used as a final pass/fail gate, never for ranking.
 import numpy as np
 
 from . import backtest
+from .context import mkt
 from .reward import strategy_score
 from .strategy import compute
 
@@ -44,7 +45,7 @@ def _window_stats(frames, p, pick, feats_cache=None, signal_fn=None):
         if feats is None:
             feats = compute(df, p)
         start, end = pick(len(df))
-        res = backtest.run(df, p, start=start, end=end, feats=feats)
+        res = backtest.run(df, p, start=start, end=end, feats=feats, costs=mkt().costs_for(sym))
         rs += res.r
         dds.append(res.max_dd)
         rets.append(res.total_return)
@@ -78,11 +79,11 @@ def vault(frames: dict, p: dict, signal_fn=None) -> dict:
 def forward(frames: dict, p: dict, since_ms: int) -> dict:
     """Performance on candles after `since_ms` only (used by the shadow test)."""
     rs, dds, rets, n = [], [], [], 0
-    for df in frames.values():
+    for sym, df in frames.items():
         start = int(np.searchsorted(df.index.to_numpy(), since_ms))
         if start >= len(df) - 1:
             continue
-        res = backtest.run(df, p, start=start, feats=compute(df, p))
+        res = backtest.run(df, p, start=start, feats=compute(df, p), costs=mkt().costs_for(sym))
         rs += res.r
         dds.append(res.max_dd)
         rets.append(res.total_return)

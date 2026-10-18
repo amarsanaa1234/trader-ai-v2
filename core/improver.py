@@ -14,7 +14,7 @@ import os
 import random
 from concurrent.futures import ProcessPoolExecutor
 
-from . import library, mistakes, patterns, shadow, validation
+from . import library, mistakes, patterns, portfolio, shadow, significance, validation
 from .features import add_static_features
 from .context import mkt
 from .strategy import clamp_params, load_params, param_space, save_params
@@ -25,6 +25,7 @@ MIN_VAULT_TRADES = 10
 MAX_VAULT_DD = 0.20
 PROMOTE_MARGIN = 0.25
 MIN_POSITIVE_FOLDS = 3
+ENSEMBLE_SIZE = 5
 
 
 def min_vault_trades() -> int:
@@ -32,8 +33,25 @@ def min_vault_trades() -> int:
     return int(((getattr(mkt(), "cfg", None) or {}).get("validation") or {}).get("min_vault_trades", MIN_VAULT_TRADES))
 
 
+def extra_gates(frames: dict, cand: dict) -> tuple[bool, dict]:
+    """Market-requested checks beyond the per-symbol vault (config "validation"):
+    portfolio: the shared-account vault must also make money with a tolerable drawdown;
+    max_p_value: the edge must beat random entries (significance.py)."""
+    cfg = (getattr(mkt(), "cfg", None) or {}).get("validation") or {}
+    out, ok = {}, True
+    if cfg.get("portfolio"):
+        pv = portfolio.vault(frames, cand)
+        out["portfolio"] = pv
+        ok &= pv["return"] > 0 and pv["max_dd"] < MAX_VAULT_DD
+    if ok and cfg.get("max_p_value") is not None:
+        sig = significance.random_benchmark(frames, cand, n=int(cfg.get("random_runs", 100)))
+        out["significance"] = sig
+        ok &= sig["p_value"] <= float(cfg["max_p_value"])
+    return bool(ok), out
+
+
 def mutate(p: dict, scale: float, rng: random.Random) -> dict:
-    q = dict(p)
+    q = {k: v for k, v in p.items() if k != "ensemble"}
     for k, (lo, hi, _) in param_space().items():
         if rng.random() < 0.4:
             q[k] = q[k] + rng.gauss(0, scale * (hi - lo))
@@ -41,7 +59,7 @@ def mutate(p: dict, scale: float, rng: random.Random) -> dict:
 
 
 def random_params(rng: random.Random, base: dict) -> dict:
-    q = dict(base)
+    q = {k: v for k, v in base.items() if k != "ensemble"}
     for k, (lo, hi, _) in param_space().items():
         q[k] = rng.uniform(lo, hi)
     return clamp_params(q)
@@ -129,6 +147,14 @@ def improve(st, symbols, dopamine: float = 0.0, seed: int | None = None) -> dict
             lessons.append(learned)
     scored.sort(key=lambda x: -x[0]["score"])
 
+    # Ensemble: the 5 best settings vote (3 of 5 must agree). One "best" setting is often
+    # partly luck; a majority of good ones is steadier.
+    members = [{k: v for k, v in c.items() if k != "ensemble"} for _, c in scored[:ENSEMBLE_SIZE]]
+    if len(members) == ENSEMBLE_SIZE:
+        ens = {**members[0], "ensemble": members, "ensemble_votes": ENSEMBLE_SIZE // 2 + 1}
+        scored.append((validation.walk_forward(frames, ens), ens))
+        scored.sort(key=lambda x: -x[0]["score"])
+
     passed = []
     for wf, cand in scored[:10]:
         if wf["score"] <= cur_wf["score"] or wf["positive_folds"] < MIN_POSITIVE_FOLDS:
@@ -136,7 +162,12 @@ def improve(st, symbols, dopamine: float = 0.0, seed: int | None = None) -> dict
         v = validation.vault(frames, cand)
         if (v["score"] > cur_vault["score"] + PROMOTE_MARGIN and v["trades"] >= min_vault_trades()
                 and v["return"] > 0 and v["max_dd"] < MAX_VAULT_DD):
-            passed.append((wf, v, cand))
+            ok, extra = extra_gates(frames, cand)
+            v.update(extra)
+            if ok:
+                passed.append((wf, v, cand))
+            if len(passed) >= 3:
+                break
 
     report = {"current": {"walk_forward": cur_wf, "vault": cur_vault}, "candidates": n,
               "best_walk_forward": scored[0][0] if scored else None, "pattern_edges": edges,

@@ -73,6 +73,7 @@ def run(df: pd.DataFrame, params: dict, start: int = 0, end: int | None = None,
     entry_order = entry_order or mkt().entry_order
     sig = feats["signal"].to_numpy()
     atr = feats["atr"].to_numpy()
+    force = np.asarray(mkt().force_exit(df.index, params), dtype=bool)   # e.g. flat before the FX weekend
     maker = entry_order == "maker"
     offset = params.get("entry_offset_atr", 0.0) if maker else 0.0
 
@@ -152,6 +153,9 @@ def run(df: pd.DataFrame, params: dict, start: int = 0, end: int | None = None,
                     pos = None
                 elif sig[i] == -side:
                     close_part(pos["qty"], c[i] * (1 - SLIPPAGE * side), TAKER_FEE, "flip")
+                    pos = None
+                elif force[i]:
+                    close_part(pos["qty"], c[i] * (1 - SLIPPAGE * side), TAKER_FEE, "weekend")
                     pos = None
                 else:
                     pos["stop"] = exits.update_stop(pos, h[i], l[i], c[i], atr[i], params)

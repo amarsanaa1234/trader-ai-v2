@@ -24,6 +24,7 @@ WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", 
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS book (symbol TEXT, ts INTEGER, long_pct REAL, PRIMARY KEY (symbol, ts));
+CREATE TABLE IF NOT EXISTS orders (symbol TEXT, ts INTEGER, imbalance REAL, PRIMARY KEY (symbol, ts));
 CREATE TABLE IF NOT EXISTS financing (
     symbol TEXT PRIMARY KEY, long_rate REAL, short_rate REAL, days TEXT, updated INTEGER);
 """ + macro.SCHEMA
@@ -38,6 +39,8 @@ CROSS_ASSET = {
     "CHF": [(-0.5, "SPX500_USD"), (0.5, "XAU_USD")],
 }
 ASSET_SCALE = {"BCO_USD": 0.02, "XAU_USD": 0.01, "XCU_USD": 0.015, "SPX500_USD": 0.01}
+# Government bond prices OANDA quotes daily (price up = yield down = currency usually weaker)
+BONDS = {"USD": "USB02Y_USD", "EUR": "DE10YB_EUR", "GBP": "UK10YB_GBP"}
 
 
 def usd_side(symbol: str) -> int:
@@ -69,39 +72,80 @@ def sync_candles(st: Storage, symbol: str, tf: str, days: int) -> int:
     return added
 
 
-def _book_at(symbol: str, ts_s: int | None):
-    params = {"time": str(ts_s)} if ts_s else {}
-    try:
-        b = data_client().get(f"/instruments/{symbol}/positionBook", **params)["positionBook"]
-    except OandaError as e:
-        log.debug("%s position book %s: %s", symbol, ts_s, e)
-        return None
+def _position_value(b: dict) -> float | None:
+    """% of OANDA clients' open positions that are long."""
     long_pct = sum(float(x["longCountPercent"]) for x in b["buckets"])
     short_pct = sum(float(x["shortCountPercent"]) for x in b["buckets"])
-    if long_pct + short_pct <= 0:
+    return 100 * long_pct / (long_pct + short_pct) if long_pct + short_pct > 0 else None
+
+
+def _order_value(b: dict, band: float = 0.01) -> float | None:
+    """Waiting orders near the price: buy orders below it vs sell orders above it,
+    in -1..1 (+ = more buyers waiting underneath than sellers overhead)."""
+    px = float(b["price"])
+    buy = sum(float(x["longCountPercent"]) for x in b["buckets"] if px * (1 - band) <= float(x["price"]) < px)
+    sell = sum(float(x["shortCountPercent"]) for x in b["buckets"] if px < float(x["price"]) <= px * (1 + band))
+    return (buy - sell) / (buy + sell) if buy + sell > 0 else None
+
+
+BOOKS = {"book": ("positionBook", _position_value), "orders": ("orderBook", _order_value)}
+
+
+def _book_at(symbol: str, ts_s: int | None, kind: str = "book"):
+    endpoint, value = BOOKS[kind]
+    params = {"time": str(ts_s)} if ts_s else {}
+    try:
+        b = data_client().get(f"/instruments/{symbol}/{endpoint}", **params)[endpoint]
+    except OandaError as e:
+        log.debug("%s %s %s: %s", symbol, endpoint, ts_s, e)
         return None
-    ts = b.get("unixTime") or pd.Timestamp(b["time"]).timestamp()   # the book ignores the UNIX header
-    return int(float(ts) * 1000), 100 * long_pct / (long_pct + short_pct)
+    v = value(b)
+    if v is None:
+        return None
+    ts = b.get("unixTime") or pd.Timestamp(b["time"]).timestamp()   # the books ignore the UNIX header
+    return int(float(ts) * 1000), v
 
 
-def sync_book(st: Storage, symbol: str, days: int, every_hours: int = 6) -> int:
-    """OANDA keeps position-book snapshots every 20 minutes back for years; history is
-    filled at `every_hours` spacing, then the newest snapshot is added every hour."""
+def sync_book(st: Storage, symbol: str, days: int, every_hours: int = 6, kind: str = "book") -> int:
+    """OANDA keeps position- and order-book snapshots every 20 minutes back for years;
+    history is filled at `every_hours` spacing, then the newest snapshot is added hourly.
+    kind: "book" (clients' positions) or "orders" (clients' waiting orders)."""
     step = every_hours * HOUR_MS
-    last = st.db.execute("SELECT MAX(ts) m FROM book WHERE symbol=?", (symbol,)).fetchone()["m"]
+    last = st.db.execute(f"SELECT MAX(ts) m FROM {kind} WHERE symbol=?", (symbol,)).fetchone()["m"]
     start = max(last + step if last else 0, now_ms() - days * DAY_MS)
     start = (start // step + 1) * step
     times = list(range(start, now_ms() - step, step))
     rows = []
     if times:
         with ThreadPoolExecutor(8) as pool:
-            rows = [r for r in pool.map(lambda t: _book_at(symbol, t // 1000), times) if r]
-    now = _book_at(symbol, None)
+            rows = [r for r in pool.map(lambda t: _book_at(symbol, t // 1000, kind), times) if r]
+    now = _book_at(symbol, None, kind)
     if now:
         rows.append(now)
-    st.db.executemany("INSERT OR REPLACE INTO book VALUES (?, ?, ?)", [(symbol, ts, p) for ts, p in rows])
+    st.db.executemany(f"INSERT OR REPLACE INTO {kind} VALUES (?, ?, ?)", [(symbol, ts, p) for ts, p in rows])
     st.db.commit()
     return len(rows)
+
+
+def sync_spreads(st: Storage, symbols, path) -> dict:
+    """Typical spread of each pair (median of the last ~3 months of hourly bid/ask closes,
+    leaving out the rollover hours and weekends) -> the backtest's per-pair costs."""
+    import json
+    c = data_client()
+    out = {}
+    for s in symbols:
+        js = c.get(f"/instruments/{s}/candles", granularity="H1", price="BA", count=2000)
+        sp = []
+        for k in js["candles"]:
+            t = pd.Timestamp(float(k["time"]), unit="s", tz="UTC")
+            if t.weekday() >= 5 or t.hour in (20, 21, 22):
+                continue
+            bid, ask = float(k["bid"]["c"]), float(k["ask"]["c"])
+            sp.append((ask - bid) / ((ask + bid) / 2))
+        if sp:
+            out[s] = round(float(np.median(sp)), 7)
+    path.write_text(json.dumps(out, indent=2), encoding="utf-8")
+    return out
 
 
 def sync_financing(st: Storage, symbols) -> int:
@@ -216,6 +260,44 @@ def _sessions(st: Storage, symbol: str, tf: str, index: pd.Index) -> np.ndarray:
     return np.nan_to_num(_at_close(sess, index, tf, HOUR_MS))
 
 
+def _yields(st: Storage, symbol: str, tf: str, index: pd.Index, days: int = 5) -> np.ndarray:
+    """Daily bond-yield momentum, base minus quote: + = the base currency's yields rose
+    more over the last week (bond prices fell more). Currencies without a bond: 0."""
+    bars = max(1, days * DAY_MS // TF_MS[tf])
+
+    def ylog(ccy):
+        if ccy not in BONDS:
+            return pd.Series(0.0, index=index)
+        c = _closes(st, BONDS[ccy], tf)
+        if c.empty:
+            return pd.Series(0.0, index=index)
+        return pd.Series(_at_close(-np.log(c).diff(bars), index, tf, TF_MS[tf]), index=index).fillna(0.0)
+
+    base, quote = symbol.split("_")
+    return (ylog(base) - ylog(quote)).to_numpy()
+
+
+def _month_end(st: Storage, symbol: str, tf: str, index: pd.Index) -> np.ndarray:
+    """Month-end rebalancing: in the last two business days of a month, funds whose US
+    stocks rose sell dollars to rebalance (and buy them after a fall). Value: the expected
+    push on this pair, +1/-1, 0 outside month-end or for pairs without USD."""
+    side = usd_side(symbol)
+    if not side:
+        return np.zeros(len(index))
+    spx = _closes(st, "SPX500_USD", tf)
+    if spx.empty:
+        return np.zeros(len(index))
+    close_t = pd.to_datetime(index + TF_MS[tf], unit="ms", utc=True)
+    spx_now = pd.Series(_at_close(spx, index, tf, TF_MS[tf]), index=index)
+    month_start = close_t.to_period("M").to_timestamp().tz_localize("UTC")
+    ms_idx = pd.Index((month_start.asi8 // 1_000_000).astype("int64"))
+    spx_ms = pd.Series(_at_close(spx, ms_idx - TF_MS[tf], tf, TF_MS[tf]), index=index)
+    mtd = spx_now / spx_ms - 1
+    last_bd = (close_t + pd.offsets.BMonthEnd(0)).normalize()
+    in_window = (close_t.normalize() >= last_bd - pd.offsets.BDay(1)) & (close_t.normalize() <= last_bd)
+    return np.where(in_window, -side * np.sign(mtd.fillna(0).to_numpy()), 0.0)
+
+
 def load_frame(st: Storage, symbol: str, tf: str, symbols) -> pd.DataFrame:
     df = pd.read_sql_query(
         "SELECT ts, open, high, low, close, volume FROM candles WHERE symbol=? AND tf=? ORDER BY ts",
@@ -233,6 +315,11 @@ def load_frame(st: Storage, symbol: str, tf: str, symbols) -> pd.DataFrame:
     df["cot_net"] = macro.cot_net(st, symbol, at).to_numpy()
     df["xasset"] = _cross_asset(st, symbol, tf, df.index)
     df["session"] = _sessions(st, symbol, tf, df.index)
+    orders = pd.read_sql_query("SELECT ts, imbalance FROM orders WHERE symbol=? ORDER BY ts", st.db,
+                               params=(symbol,)).set_index("ts")["imbalance"]
+    df["order_imb"] = _at_close(orders, df.index, tf) if not orders.empty else np.nan
+    df["yields"] = _yields(st, symbol, tf, df.index)
+    df["month_end"] = _month_end(st, symbol, tf, df.index)
     df["news"] = 0.0
     return df
 
@@ -247,4 +334,5 @@ def sync_all(st: Storage, symbols, tf: str, days: int, book_days: int, book_ever
     for s in list(symbols) + list(aux):
         n = {t: sync_candles(st, s, t, days) for t in tfs}
         b = sync_book(st, s, book_days, book_every) if s in symbols else 0
-        log.info("%s: +%s лаа, +%d position book", s, n, b)
+        o = sync_book(st, s, book_days, book_every, kind="orders") if s in symbols else 0
+        log.info("%s: +%s лаа, +%d position book, +%d order book", s, n, b, o)

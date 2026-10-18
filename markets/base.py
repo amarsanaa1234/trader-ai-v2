@@ -74,6 +74,18 @@ class Market:
         """maker / taker fee and market-order slippage, as fractions of price."""
         return {"maker": 0.0002, "taker": 0.0005, "slippage": 0.0002, **self.cfg.get("costs", {})}
 
+    def costs_for(self, symbol: str) -> dict:
+        """Costs of one instrument (a market with very different spreads overrides this)."""
+        return self.costs
+
+    def force_exit(self, index: pd.Index, p: dict):
+        """Bars at whose close an open position must be closed (e.g. before the FX weekend)."""
+        return np.zeros(len(index), dtype=bool)
+
+    def entry_filter(self, df: pd.DataFrame, p: dict):
+        """Tunable bars-to-skip filter (e.g. FX: the day's range is already used up), or None."""
+        return None
+
     def tf_ms(self, tf: str | None = None) -> int:
         return tf_to_ms(tf or self.timeframe)
 

@@ -46,6 +46,25 @@ ABS_MAX_LEVERAGE = 10
 ABS_MIN_STOP_DISTANCE = 0.0005
 
 
+def max_currency_risk() -> float | None:
+    """Cap on open risk leaning the same way on one currency (FX), or None."""
+    v = ((getattr(mkt(), "cfg", None) or {}).get("risk") or {}).get("max_currency_risk")
+    return float(v) if v else None
+
+
+def currency_risk(open_legs, symbol: str, side: int) -> float:
+    """Open risk (fraction of equity) already betting the same way on either currency
+    of a new `side` trade in `symbol`. open_legs: [(symbol, side, risk_fraction)].
+    EUR_USD long + GBP_USD long + AUD_USD long is one big "USD falls" bet."""
+    expo = {}
+    for sym, s, r in open_legs:
+        base, quote = sym.split("_")
+        expo[base] = expo.get(base, 0.0) + s * r
+        expo[quote] = expo.get(quote, 0.0) - s * r
+    base, quote = symbol.split("_")
+    return max(0.0, expo.get(base, 0.0) * side, -expo.get(quote, 0.0) * side)
+
+
 def market_bounds() -> tuple[float, float, float]:
     """(max_leverage, min_stop_distance, max_stop_distance) for the active market."""
     r = (getattr(mkt(), "cfg", None) or {}).get("risk") or {}
@@ -103,6 +122,7 @@ def check_entry(
     blackout: str | None = None,
     paused: bool = False,
     risk_per_trade: float | None = None,
+    same_currency_risk: float = 0.0,
 ) -> Decision:
     """side: +1 long, -1 short. Returns the allowed quantity (base units)."""
     if paused:
@@ -144,6 +164,11 @@ def check_entry(
     risk_frac = min(risk_frac, lim["max_total_open_risk"] - open_risk / equity)
     if risk_frac <= RISK_PER_TRADE * 0.1:
         return Decision(False, reason="нийт нээлттэй эрсдэл хязгаартаа хүрсэн")
+    cap = max_currency_risk()
+    if cap is not None:
+        risk_frac = min(risk_frac, cap - same_currency_risk)
+        if risk_frac <= RISK_PER_TRADE * 0.1:
+            return Decision(False, reason=f"нэг валют дээрх эрсдэл {cap:.0%}-д хүрсэн")
 
     qty = equity * risk_frac / stop_dist
     max_notional = equity * max_leverage - open_notional

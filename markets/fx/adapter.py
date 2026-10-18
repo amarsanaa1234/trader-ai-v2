@@ -19,7 +19,8 @@ def _bars_per_day(df: pd.DataFrame) -> int:
 class FX(Market):
     name = "fx"
     label = "💱 Валют"
-    source_names = ("crowd", "usd", "tsmom", "carry", "rates", "cot", "xasset", "session")
+    source_names = ("crowd", "usd", "tsmom", "carry", "rates", "cot", "xasset", "session",
+                    "orders", "yields", "month_end")
     default_params = {
         # OANDA's own clients: unusually many long favours shorts (retail is usually
         # on the wrong side; the self-improver may flip it if the data disagrees)
@@ -33,12 +34,19 @@ class FX(Market):
         "w_cot": -0.3,        # big speculators at an extreme -> contrarian
         "w_xasset": 0.3,      # oil -> CAD, gold/copper -> AUD, stocks down -> JPY/CHF up
         "w_session": 0.3,     # Tokyo-range breakout at the London open, London range at New York
+        "w_orders": 0.2,      # OANDA clients' waiting orders: buyers below vs sellers above
+        "w_yields": 0.3,      # daily government-bond yield moves (US 2y, German/UK 10y)
+        "w_month_end": 0.3,   # month-end rebalancing flows against the month's stock move
+        "adr_block": 2.0,     # skip entries once the day's range > this x average day range (>=1.95 = off)
+        "weekend_close": 0.0, # > 0.5: close open trades on Friday evening (avoid the weekend gap)
     }
     param_space = {
         "w_crowd": (-1.5, 1.0, False), "w_usd": (-1.0, 1.5, False), "usd_scale": (0.002, 0.01, False),
         "w_tsmom": (-1.0, 1.5, False), "tsmom_days": (10, 120, True),
         "w_carry": (-1.0, 1.5, False), "w_rates": (-1.0, 1.5, False), "w_cot": (-1.5, 1.0, False),
         "w_xasset": (-1.0, 1.5, False), "w_session": (-1.0, 1.5, False),
+        "w_orders": (-1.0, 1.0, False), "w_yields": (-1.0, 1.5, False), "w_month_end": (-1.0, 1.0, False),
+        "adr_block": (0.6, 2.0, False), "weekend_close": (0.0, 1.0, False),
     }
     rule_columns = ("long_pct", "usd_mom", "rate_diff", "cot_net", "xasset", "session")
     rule_help = ("long_pct (% of OANDA clients long, 0-100, normal ~40-70), "
@@ -71,7 +79,48 @@ class FX(Market):
             "cot": (cot_z / 2).clip(-1, 1).fillna(0),
             "xasset": df["xasset"].fillna(0),
             "session": df["session"].fillna(0),
+            "orders": df["order_imb"].clip(-1, 1).fillna(0),
+            "yields": np.tanh(df["yields"] / 0.005).fillna(0),
+            "month_end": df["month_end"].fillna(0),
         }
+
+    def entry_filter(self, df: pd.DataFrame, p: dict):
+        """True = skip: today's high-low already exceeds adr_block x the average daily range
+        of the last 20 days (the move is probably used up)."""
+        if p.get("adr_block", 2.0) >= 1.95:
+            return None
+        day = pd.to_datetime(df.index, unit="ms", utc=True).normalize()
+        g = pd.DataFrame({"h": df["high"].to_numpy(), "l": df["low"].to_numpy(), "d": day})
+        today_range = g.groupby("d")["h"].cummax() - g.groupby("d")["l"].cummin()
+        daily = (g.groupby("d")["h"].max() - g.groupby("d")["l"].min())
+        adr = daily.rolling(20, min_periods=10).mean().shift(1).reindex(day).to_numpy()
+        return np.asarray(today_range.to_numpy() > p["adr_block"] * adr)
+
+    def force_exit(self, index, p: dict):
+        """With weekend_close on: close at the last candle before the Friday close (21:00 UTC)."""
+        if p.get("weekend_close", 0.0) <= 0.5:
+            return np.zeros(len(index), dtype=bool)
+        t = pd.to_datetime(np.asarray(index) + self.tf_ms(), unit="ms", utc=True)
+        nxt = t + pd.Timedelta(milliseconds=self.tf_ms())
+        return np.asarray((t.weekday == 4) & (t.hour < 21) & ((nxt.hour >= 21) | (nxt.weekday != 4)))
+
+    def costs_for(self, symbol: str) -> dict:
+        """Per-pair costs from the measured typical spread (spreads.json, made by sync);
+        crosses like GBP_JPY cost 2-3x EUR_USD."""
+        sp = self._spreads().get(symbol)
+        if not sp:
+            return self.costs
+        return {"maker": sp * 0.5, "taker": sp * 0.6, "slippage": sp * 0.15}
+
+    def _spreads(self) -> dict:
+        import json
+        path = self.data_dir / "spreads.json"
+        if not path.exists():
+            return {}
+        mtime = path.stat().st_mtime
+        if getattr(self, "_sp_cache", (None, None))[0] != mtime:
+            self._sp_cache = (mtime, json.loads(path.read_text(encoding="utf-8")))
+        return self._sp_cache[1]
 
     def no_entry(self, index: pd.Index) -> np.ndarray:
         """Bars whose close falls in the daily rollover (wide spreads) or on Friday evening."""
@@ -91,7 +140,8 @@ class FX(Market):
         return {"session_asia": pd.Series((h >= 0) & (h < 7), index=df.index),
                 "session_london": pd.Series((h >= 7) & (h < 13), index=df.index),
                 "session_newyork": pd.Series((h >= 13) & (h < 21), index=df.index),
-                "session_late": pd.Series(h >= 21, index=df.index)}
+                "session_late": pd.Series(h >= 21, index=df.index),
+                "month_end": df["month_end"] != 0 if "month_end" in df else pd.Series(False, index=df.index)}
 
     def spread_ok(self, symbol: str) -> tuple[bool, str]:
         from .broker import bid_ask
@@ -110,6 +160,7 @@ class FX(Market):
         data.sync_all(st, symbols or self.symbols, self.timeframe, self.history_days,
                       int(self.cfg.get("book_days", 730)), int(self.cfg.get("book_every_hours", 6)),
                       self.aux_symbols)
+        data.sync_spreads(st, self.symbols, self.data_dir / "spreads.json")
 
     def sync_symbol(self, st, symbol: str) -> None:
         for tf in {self.timeframe, "1h"}:
@@ -141,10 +192,11 @@ class FX(Market):
     def hourly(self, trader, equity: float, day: dict) -> None:
         # newest crowd snapshot and related-market candles once an hour
         for s in self.symbols:
-            try:
-                data.sync_book(trader.st, s, 2, 1)
-            except Exception:
-                pass
+            for kind in ("book", "orders"):
+                try:
+                    data.sync_book(trader.st, s, 2, 1, kind=kind)
+                except Exception:
+                    pass
         for s in self.aux_symbols:
             try:
                 data.sync_candles(trader.st, s, self.timeframe, self.history_days)

@@ -27,7 +27,7 @@ import numpy as np
 
 import markets
 
-from . import (events, exits, improver, news, research, review, reward, risk_guard, risk_ladder,
+from . import (events, exits, improver, live_check, news, research, review, reward, risk_guard, risk_ladder,
                telegram_bot)
 from . import messages as M
 from . import users as users_mod
@@ -261,6 +261,21 @@ class Trader:
             rets[s] = df["close"].iloc[-720:].pct_change()
         return max(float(np.nan_to_num(rets[sym].corr(rets[o]))) for o in others)
 
+    def currency_risk(self, sym: str, side: int, positions: dict, equity: float) -> float:
+        """Open + pending risk already leaning the same way on this trade's currencies (FX only)."""
+        if risk_guard.max_currency_risk() is None or equity <= 0:
+            return 0.0
+        legs = []
+        for t in self.open_trades():
+            if t["symbol"] in positions:
+                s = SIDE_NUM[t["side"]]
+                legs.append((t["symbol"], s, max(0.0, s * (t["entry"] - t["stop"])) * positions[t["symbol"]]["qty"] / equity))
+        for s in self.m.symbols:
+            pend = self.acc.get(f"pending:{s}")
+            if pend:
+                legs.append((s, pend["side"], pend["qty"] * pend["dist"] / equity))
+        return risk_guard.currency_risk(legs, sym, side)
+
     def risk_per_trade(self) -> float | None:
         """The person's own choice, capped by the market's risk ladder (if it has one)."""
         mine = self.acc.user.risk_per_trade
@@ -291,7 +306,7 @@ class Trader:
             peak_equity=self.acc.get("peak_equity", equity), open_risk=risk,
             max_corr_same_side=self.correlation(sym, side),
             blackout=events.blackout(self.st, symbol=sym), paused=self.paused(),
-            risk_per_trade=self.risk_per_trade())
+            risk_per_trade=self.risk_per_trade(), same_currency_risk=self.currency_risk(sym, side, positions, equity))
         if not dec.allowed:
             return dec.reason
         try:
@@ -388,6 +403,8 @@ class Trader:
         sym, side = t["symbol"], SIDE_NUM[t["side"]]
         held = (sig["bar_ts"] - t["opened_bar_ts"]) // self.tf_ms
         reason = "flip" if sig["signal"] == -side else "time" if held >= self.params["max_hold_bars"] else None
+        if not reason and self.m.force_exit(np.array([sig["bar_ts"]]), self.params)[0]:
+            reason = "weekend"
         if reason:
             self.broker.close(sym)
             self.finish_trade(t, reason)
@@ -439,6 +456,8 @@ class Trader:
                 continue
             if not self.m.is_open():  # e.g. FX at the weekend: manage open trades, open nothing new
                 continue
+            if sig["signal"] != 0 and self.m.force_exit(np.array([sig["bar_ts"]]), self.params)[0]:
+                continue              # don't open what would be closed right away for the weekend
             if sig["signal"] != 0 and sym not in positions and not self.acc.get(f"pending:{sym}"):
                 why = self.try_enter(sym, sig, positions, equity, day)
                 if why:
@@ -589,6 +608,22 @@ class Trader:
                 equity, day, _ = self.view[name]
                 self.m.hourly(self, equity, day)
 
+    def check_live_vs_backtest(self):
+        """Pause an account whose real results are clearly worse than the backtest promised."""
+        expected = live_check.expected_avg_r()
+        since = live_check.since_settings_changed()
+        for acc in self.accounts.values():
+            if acc.get("paused"):
+                continue
+            rs = [t["r_multiple"] for t in self.st.closed_trades(self.m.mode, 200, acc.name)
+                  if t.get("r_multiple") is not None and (t.get("opened_ts") or 0) >= since]
+            msg = live_check.verdict(rs, expected)
+            if msg:
+                acc.set("paused", True)
+                notify(msg, to=acc.user)
+                if not acc.user.is_admin:
+                    notify(f"{acc.name}: {msg}")
+
     def maybe_daily(self):
         now = datetime.now(timezone.utc)
         today = now.strftime("%Y-%m-%d")
@@ -612,6 +647,7 @@ class Trader:
         if rep.get("shadow_promoted"):
             notify(f"🧠 Shadow {rep['shadow_promoted']} ирээдүйн өгөгдөл дээр давж гарсан тул идэвхтэй тохиргоо боллоо")
         self.params = load_params()
+        self.check_live_vs_backtest()
         if now.weekday() == 0 and self.st.get("weekly_on") != today:
             self.st.set("weekly_on", today)
             for acc in self.accounts.values():

@@ -73,15 +73,17 @@ def cmd_sync(st):
 
 
 def cmd_backtest(st):
-    from core import backtest, validation
+    from core import backtest, portfolio, significance, validation
     from core.strategy import load_params
     p = load_params()
     fr = frames(st, static=True)
     print("Walk-forward (4 хугацаа):", json.dumps(validation.walk_forward(fr, p), ensure_ascii=False))
     print("Vault (сүүлийн 15%):     ", json.dumps(validation.vault(fr, p), ensure_ascii=False))
+    print("Нэг данс, vault:         ", json.dumps(portfolio.vault(fr, p), ensure_ascii=False))
+    print("Санамсаргүйтэй харьцуулалт:", json.dumps(significance.random_benchmark(fr, p, n=100), ensure_ascii=False))
     for s, df in fr.items():
         cut = validation.research_end(len(df))
-        print(f"{s} vault дэлгэрэнгүй: {backtest.run(df, p, start=cut).summary()}")
+        print(f"{s} vault дэлгэрэнгүй: {backtest.run(df, p, start=cut, costs=mkt().costs_for(s)).summary()}")
 
 
 def cmd_library(st):

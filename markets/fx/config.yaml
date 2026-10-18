@@ -28,8 +28,9 @@ htf:
   1h: [[4h, 50], [1D, 20]]
   4h: [[1D, 20], [1W, 10]]
 
-# Prices the cross-asset source reads (not traded): oil, gold, copper, S&P 500
-aux_symbols: [BCO_USD, XAU_USD, XCU_USD, SPX500_USD]
+# Prices other sources read (not traded): oil, gold, copper, S&P 500, and US 2y /
+# German 10y / UK 10y government bonds for daily yield moves
+aux_symbols: [BCO_USD, XAU_USD, XCU_USD, SPX500_USD, USB02Y_USD, DE10YB_EUR, UK10YB_GBP]
 
 costs:                  # fractions of price, per side: about half the typical spread (crosses are wider)
   maker: 0.00006
@@ -41,6 +42,7 @@ risk:                   # FX moves ~0.1%/hour, so crypto's 0.3% minimum stop wou
   max_stop_distance: 0.03
   max_leverage: 3             # owner's choice (2026-10-18; was 2)
   max_spread: 0.0004          # no new entry while the live spread is wider than 0.04% of price
+  max_currency_risk: 0.02     # open risk leaning one way on one currency (e.g. 3 x "USD falls") <= 2%
   ladder:                     # risk per trade steps with the last 30 closed trades
     levels: [0.005, 0.01]     # start at 0.5%, never above 1%
     window: 30
@@ -51,6 +53,9 @@ risk:                   # FX moves ~0.1%/hour, so crypto's 0.3% minimum stop wou
 validation:             # "too few trades proves nothing": stricter than crypto
   min_fold_trades: 40
   min_vault_trades: 60
+  portfolio: true         # the shared-account vault (core/portfolio.py) must also be profitable
+  max_p_value: 0.10       # and the edge must beat 90% of random-entry runs (core/significance.py)
+  random_runs: 100
 
 # No new entries (backtest and live): the daily rollover, when spreads widen a lot,
 # and Friday evening before the weekend gap.

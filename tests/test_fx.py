@@ -55,6 +55,16 @@ def test_no_entry_rollover_and_friday():
     assert blocked.tolist() == [False, False, False, True]      # Friday bar closing 20:00 is blocked
 
 
+def test_weekend_close_and_spread_costs(tmp_path, monkeypatch):
+    idx = pd.Index([ms(2026, 10, 16, 12), ms(2026, 10, 16, 16), ms(2026, 10, 14, 16)])
+    assert FX.force_exit(idx, {"weekend_close": 0.0}).tolist() == [False, False, False]
+    assert FX.force_exit(idx, {"weekend_close": 1.0}).tolist() == [False, True, False]   # Fri bar closing 20:00
+    monkeypatch.setattr(FX, "data_dir", tmp_path)
+    (tmp_path / "spreads.json").write_text('{"GBP_JPY": 0.0002}', encoding="utf-8")
+    assert FX.costs_for("GBP_JPY")["maker"] == pytest.approx(0.0001)
+    assert FX.costs_for("EUR_USD") == FX.costs                              # not measured -> default
+
+
 def test_risk_ladder_steps():
     from core import risk_ladder as rl
     cfg = {"levels": [0.005, 0.01], "window": 30, "up_avg_r": 0.0, "up_profit_factor": 1.2, "down_avg_r": 0.0}

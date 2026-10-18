@@ -14,6 +14,7 @@ import logging
 import numpy as np
 
 from . import backtest, validation
+from .context import mkt
 from .strategy import compute, situation_tags
 
 log = logging.getLogger(__name__)
@@ -28,10 +29,10 @@ MIN_GAIN = 0.1           # walk-forward score must improve at least this much
 def situation_stats(frames: dict, p: dict) -> dict:
     """{tag: [R of every research-window trade that started in that situation]}."""
     out = {}
-    for df in frames.values():
+    for sym, df in frames.items():
         feats = compute(df, p)
         end = validation.research_end(len(df))
-        res = backtest.run(df, p, end=end, feats=feats)
+        res = backtest.run(df, p, end=end, feats=feats, costs=mkt().costs_for(sym))
         tags = situation_tags(df, feats)
         for t in res.trades:
             i = t["open_bar"] - 1                     # the candle whose signal opened it

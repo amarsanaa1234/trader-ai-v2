@@ -207,8 +207,15 @@ def compute(df: pd.DataFrame, p: dict) -> pd.DataFrame:
         long_ok &= ~long_bad
         short_ok &= ~short_bad
     sig = np.where(long_ok, 1, np.where(short_ok, -1, 0))
+    if p.get("ensemble"):   # several good settings vote; the leader's stops/targets are used
+        votes = sum(compute(df, {**m, "ensemble": None})["signal"].to_numpy() for m in p["ensemble"])
+        need = int(p.get("ensemble_votes", (len(p["ensemble"]) // 2) + 1))
+        sig = np.where(votes >= need, 1, np.where(votes <= -need, -1, 0))
     sig[np.asarray(out["volatile"], dtype=bool)] = 0
     sig[np.asarray(mkt().no_entry(df.index), dtype=bool)] = 0
+    skip = mkt().entry_filter(df, p)
+    if skip is not None:
+        sig[np.asarray(skip, dtype=bool)] = 0
     sig[: int(p["ema_slow"])] = 0  # indicator warm-up
     out["signal"] = sig
     return out
