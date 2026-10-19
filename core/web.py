@@ -22,6 +22,7 @@ import markets
 from . import auth, dashboard
 from . import users as users_mod
 from .context import activate, mkt
+from .settings import NEWS_EVAL_FROM
 from .storage import Storage
 
 log = logging.getLogger(__name__)
@@ -252,7 +253,35 @@ def reports(request: Request):
             except Exception as e:
                 text = f"–  ({e})"
             parts.append(f"<h2>{esc(mkt().label)}</h2><pre>{esc(text)}</pre>")
-    return page("Тайлан", "<h1>📊 7 хоногийн тайлан</h1>" + "".join(parts), user, "reports")
+    news_parts = []
+    for name in visible_markets(user):
+        with market(name):
+            news_parts.append(news_check_html(Storage()))
+    return page("Тайлан", "<h1>📊 7 хоногийн тайлан</h1>" + "".join(parts) +
+                "<h1 style='margin-top:28px'>📰 Мэдээний шалгалт</h1>"
+                "<p class='muted'>AI мэдээг \"эерэг/сөрөг\" гэж үнэлсний дараа үнэ тэр чиглэлд явсан уу? "
+                "Мэдээ одоогоор шийдвэрт оролцдоггүй; энэ шалгалтаар буцааж оруулах эсэхийг шийднэ. "
+                f"{esc(NEWS_EVAL_FROM)}-нээс эхлэн 7 хоног тутам автоматаар шинэчлэгдэнэ.</p>" + "".join(news_parts),
+                user, "reports")
+
+
+def news_check_html(st) -> str:
+    r = st.get("news_eval")
+    head = f"<h2>{esc(mkt().label)}</h2>"
+    if not r:
+        n = st.db.execute("SELECT COUNT(*) c FROM news").fetchone()["c"]
+        k = st.db.execute("SELECT COUNT(*) c FROM sentiment").fetchone()["c"]
+        return head + (f"<div class='card'>⏳ {esc(NEWS_EVAL_FROM)}-нд анх удаа шалгана. Одоогоор <b>{n}</b> гарчиг, "
+                       f"<b>{k}</b> AI үнэлгээ цуглуулсан.</div>")
+    from datetime import datetime, timezone
+    when = datetime.fromtimestamp(r["run_at"] / 1000, timezone.utc).strftime("%Y-%m-%d")
+    rows = "".join(f"<tr><td>{x['hours']} цагийн дараа</td><td>{esc(x['subset'])}</td><td>{x['n']}</td>"
+                   f"<td>{x['hit']:.0%}</td><td>{x['avg_atr']:+.2f}</td><td>{x['t']:+.1f}</td></tr>" for x in r["rows"])
+    table = ("<table><thead><tr><th>Хугацаа</th><th>Мэдээ</th><th>Тоо</th><th>Зөв чиглэл</th><th>Дундаж (ATR)</th>"
+             f"<th>t</th></tr></thead><tbody>{rows}</tbody></table>") if rows else ""
+    return head + (f"<div class='card'><b>{esc(r['verdict'])}</b><br><span class='muted'>{when} · сүүлийн {r['days']} хоног · "
+                   f"{r['scored']} үнэлгээ · {esc(', '.join(r.get('models') or []))}</span>{table}"
+                   "<p class='muted'>Зөв чиглэл &gt; 55% ба t &gt; 2 бол мэдээ ашигтай байж магадгүй.</p></div>")
 
 
 # ---------------- settings ----------------
@@ -268,7 +297,7 @@ def settings_page(request: Request, msg: str = ""):
     tg = "✅ холбогдсон" if user.telegram_chat_id else "❌ холбогдоогүй (админд chat ID-гаа өгнө үү)"
     return page("Тохиргоо", f"""<h1>⚙️ Тохиргоо</h1>{note}
 <div class="card"><b>Telegram:</b> {tg}<br><b>Зах зээл:</b> {esc(', '.join(user.markets) or '–')}
-<br><b>Нэг арилжааны эрсдэл:</b> {f'{user.risk_per_trade:.2%}' if user.risk_per_trade else '1% (стандарт)'}
+<br><b>Нэг арилжааны эрсдэл:</b> {f'{user.risk_per_trade:.2%}' if user.risk_per_trade else '0.5% (стандарт, зах зээл бүрийн дээд хязгаар)'}
 <p class="muted">Арилжааг зогсоох/эхлүүлэх нь Telegram-аар: /stop, /resume, /closeall</p></div>
 <h2>Нууц үг солих</h2>
 <form class="box card" method="post" action="/settings/password">

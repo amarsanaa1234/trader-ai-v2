@@ -72,3 +72,19 @@ def test_ensemble_needs_a_majority():
     assert np.abs(ens).sum() < np.abs(one).sum()        # a lone voter can't trade on its own
     ens2 = compute(df, {**a, "ensemble": [a, a, b], "ensemble_votes": 2})["signal"].to_numpy()
     assert (ens2 == one).mean() > 0.95
+
+
+def test_news_check_section(tmp_path):
+    from core import news_eval, web
+    from core.storage import Storage
+    st = Storage(tmp_path / "n.db")
+    assert "анх удаа шалгана" in web.news_check_html(st)           # before the first run: what's collected so far
+    r = news_eval.evaluate(st)                                      # nothing scored yet
+    assert r["scored"] == 0 and r["rows"] == []
+    st.set("news_eval", {**r, "rows": [{"hours": 4, "subset": "бүгд", "n": 40, "hit": 0.6, "avg_atr": 0.3, "t": 2.4}],
+                         "verdict": news_eval.verdict([{"hours": 4, "subset": "бүгд", "n": 40, "hit": 0.6,
+                                                        "avg_atr": 0.3, "t": 2.4}])})
+    html = web.news_check_html(st)
+    assert "✅" in html and "60%" in html and "+2.4" in html
+    assert news_eval.verdict([{"t": -2.5, "hit": 0.4}]).startswith("🔄")
+    assert news_eval.verdict([{"t": 0.5, "hit": 0.52}]).startswith("➖")

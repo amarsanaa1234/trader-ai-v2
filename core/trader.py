@@ -27,7 +27,7 @@ import numpy as np
 
 import markets
 
-from . import (events, exits, improver, live_check, news, research, review, reward, risk_guard, risk_ladder,
+from . import (events, exits, improver, live_check, news, news_eval, research, review, reward, risk_guard, risk_ladder,
                telegram_bot)
 from . import messages as M
 from . import users as users_mod
@@ -36,7 +36,7 @@ from .context import mkt
 from .features import add_static_features
 from .library import approved
 from .notifier import notify
-from .settings import IMPROVE_HOUR_UTC, LIVE_CONFIRM, LOOP_SECONDS, NEWS_EVERY_MIN, base_asset
+from .settings import IMPROVE_HOUR_UTC, LIVE_CONFIRM, LOOP_SECONDS, NEWS_EVAL_FROM, NEWS_EVERY_MIN, base_asset
 from .storage import Storage, now_ms
 from .strategy import compute, load_params, source_names, vault_score
 
@@ -651,6 +651,22 @@ class Trader:
             self.params = load_params()
             self.check_live_vs_backtest()
 
+    def maybe_news_eval(self, today: str):
+        """Weekly from NEWS_EVAL_FROM: were the AI news scores right? Stored for the web report page."""
+        last = (self.st.get("news_eval") or {}).get("run_at", 0)
+        if today < NEWS_EVAL_FROM or now_ms() - last < 7 * 86_400_000:
+            return
+        try:
+            r = news_eval.evaluate(self.st)
+            self.st.set("news_eval", r)
+            notify(f"📰 NEWS CHECK · {self.m.label}
+
+{r['scored']} scored headlines in {r['days']} days.
+"
+                   "Results are on the web report page.")
+        except Exception as e:
+            log.warning("Мэдээний шалгалт: %s", e)
+
     def maybe_daily(self):
         now = datetime.now(timezone.utc)
         today = now.strftime("%Y-%m-%d")
@@ -674,6 +690,7 @@ class Trader:
         if not (self._improving and self._improving.is_alive()):
             self._improving = threading.Thread(target=self._improve_job, args=(dop,), daemon=True)
             self._improving.start()
+        self.maybe_news_eval(today)
         if now.weekday() == 0 and self.st.get("weekly_on") != today:
             self.st.set("weekly_on", today)
             for acc in self.accounts.values():

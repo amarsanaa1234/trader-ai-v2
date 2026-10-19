@@ -42,3 +42,7 @@ IMPROVE_HOUR_UTC = int(os.getenv("IMPROVE_HOUR_UTC", "1"))
 def base_asset(symbol: str) -> str:
     """'BTC/USDT:USDT' -> 'BTC', 'EUR/USD' -> 'EUR'."""
     return symbol.split("/")[0]
+
+# From this date the bots check weekly whether the AI news scores were right
+# (core/news_eval.py); the web report page shows the result. Owner, 2026-10-19.
+NEWS_EVAL_FROM = os.getenv("NEWS_EVAL_FROM", "2026-11-19")
