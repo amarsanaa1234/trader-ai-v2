@@ -290,7 +290,16 @@ class BinanceBroker:
     def entry_status(self, symbol, pend):
         if pend.get("status") == "filled" and "id" not in pend:
             return pend
-        o = self.ex.fetch_order(pend["id"], symbol)
+        try:
+            o = self.ex.fetch_order(pend["id"], symbol)
+        except (ccxt.OrderNotFound, ccxt.BadRequest) as e:
+            # Binance forgets expired/cancelled orders after a while (-2013 "Order does not exist");
+            # treat it as gone, otherwise this one order would break every loop for the account
+            log.warning("%s захиалга %s биржид алга (%s) -> цуцлагдсан гэж үзлээ", symbol, pend.get("id"), e)
+            pos = self.positions().get(symbol)
+            if pos and pos["side"] == pend.get("side"):   # it did fill before disappearing
+                return {"status": "filled", "filled": pos["qty"], "avg": pos["entry"]}
+            return {"status": "canceled", "filled": 0.0, "avg": None}
         filled = float(o.get("filled") or 0)
         avg = float(o.get("average") or o.get("price") or 0) or None
         status = {"closed": "filled", "open": "open"}.get(o["status"], "canceled")
