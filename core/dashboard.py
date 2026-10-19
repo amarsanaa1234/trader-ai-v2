@@ -86,7 +86,9 @@ def data(user: str) -> dict:
             "SELECT * FROM carry WHERE status='closed' AND mode=? AND user=? ORDER BY closed_ts DESC LIMIT 20",
             (mode, user))],
         "events": events.upcoming(st, hours=24 * 7),
-        "blackout": {"before_min": BLACKOUT_BEFORE_MIN, "after_min": BLACKOUT_AFTER_MIN, "now": events.blackout(st)},
+        "blackout": {"before_min": BLACKOUT_BEFORE_MIN, "after_min": BLACKOUT_AFTER_MIN, "now": events.blackout(st),
+                     # which instruments it actually pauses (FX: only pairs with that currency)
+                     "symbols": [s for s in m.symbols if events.blackout(st, symbol=s)]},
         "drift": drift(st, user),
         **m.dashboard_extras(st),   # market-specific panels
     }

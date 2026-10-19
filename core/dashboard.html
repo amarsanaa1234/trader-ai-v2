@@ -502,7 +502,11 @@ async function load() {
 
   const banners = [];
   if (d.drift.warning) banners.push(`⚠️ Бодит үр дүн (${fmt(d.drift.live_avg_r)}R) backtest-ийн амласнаас (${fmt(d.drift.backtest_avg_r)}R) хамаагүй муу байна. Стратеги хуучирсан байж магадгүй.`);
-  if (d.blackout?.now) banners.push(`📅 Чухал үйл явдлын цаг (${esc(d.blackout.now)}): шинэ арилжаа түр нээгдэхгүй.`);
+  if (d.blackout?.now) {
+    const syms = d.blackout.symbols || [];
+    const which = syms.length && syms.length < d.symbols.length ? syms.map(coin).join(", ") + " дээр" : "";
+    banners.push(`📅 Чухал үйл явдлын цаг (${esc(d.blackout.now)}): ${which} шинэ арилжаа түр нээгдэхгүй. Нээлттэй арилжаа stop/TP-тэйгээ үргэлжилнэ.`);
+  }
   $("banners").innerHTML = banners.map(b => `<div class="banner">${b}</div>`).join("");
 
   drawChart(d.equity_history);
