@@ -367,10 +367,14 @@ class BinanceBroker:
             try:
                 self.ex.cancel_all_orders(symbol, params=params)
             except Exception as e:
-                log.debug("cancel %s %s: %s", symbol, params, e)
+                log.warning("%s захиалга цуцалж чадсангүй %s: %s", symbol, params, e)
 
     def close(self, symbol):
         p = self.positions().get(symbol)
+        if not p:     # ask for this one symbol too: the all-positions list once came back without it
+            for x in self.ex.fetch_positions([symbol]):
+                if float(x.get("contracts") or 0) > 0:
+                    p = {"side": 1 if x["side"] == "long" else -1, "qty": float(x["contracts"])}
         px = None
         if p:
             order = self.ex.create_order(symbol, "market", "sell" if p["side"] == 1 else "buy", p["qty"],

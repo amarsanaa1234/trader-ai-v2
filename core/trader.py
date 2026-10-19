@@ -160,6 +160,24 @@ class Trader:
     def open_trades(self):
         return self.st.open_trades(self.m.mode, self.acc.name)
 
+    def close_trade(self, t: dict, reason: str) -> bool:
+        """Close on the exchange, and record the trade as closed only once the position
+        is really gone (2026-10-20: a flip was recorded while SOL/BNB stayed open)."""
+        sym = t["symbol"]
+        try:
+            self.broker.close(sym)
+        except Exception as e:
+            log.exception("%s/%s хааж чадсангүй", self.acc.name, sym)
+            notify(f"🚨 {sym}: could not close ({reason}): {e}. Trying again next loop.",
+                   key=f"closefail{sym}", every_sec=3600, to=self.to())
+            return False
+        if sym in self.broker.positions():
+            notify(f"🚨 {sym}: tried to close ({reason}) but the position is still open on the exchange. "
+                   "Trying again next loop.", key=f"closefail{sym}", every_sec=3600, to=self.to())
+            return False
+        self.finish_trade(t, reason)
+        return True
+
     def finish_trade(self, trade: dict, reason: str | None, exit_px=None, pnl=None):
         if exit_px is None or pnl is None:
             exit_px, pnl = self.broker.closed_result(trade["symbol"], trade)
@@ -202,8 +220,7 @@ class Trader:
                            to=self.to())
                 except Exception as e:
                     notify(f"🚨 {sym}: could not place the stop ({e}) -> closing", to=self.to())
-                    self.broker.close(sym)
-                    self.finish_trade(t, "no_stop")
+                    self.close_trade(t, "no_stop")
         known = {t["symbol"] for t in self.open_trades()} | \
                 {c["symbol"] for c in self.st.open_carries(self.m.mode, self.acc.name)}
         for sym in positions:
@@ -218,8 +235,7 @@ class Trader:
                 self.broker.cancel_entry(sym, pend)
                 self.acc.set(f"pending:{sym}", None)
         for t in self.open_trades():
-            self.broker.close(t["symbol"])
-            self.finish_trade(t, reason)
+            self.close_trade(t, reason)
         if include_carry:
             for c in self.st.open_carries(self.m.mode, self.acc.name):
                 self.m.close_carry(self, c, reason)
@@ -406,9 +422,7 @@ class Trader:
         if not reason and self.m.force_exit(np.array([sig["bar_ts"]]), self.params)[0]:
             reason = "weekend"
         if reason:
-            self.broker.close(sym)
-            self.finish_trade(t, reason)
-            return True
+            return self.close_trade(t, reason)
         pos = {"side": side, "entry": t["entry"], "stop": t["stop"], "dist": t["dist"] or abs(t["entry"] - t["stop"]),
                "best": t["best"] or t["entry"]}
         new_stop = exits.update_stop(pos, sig["high"], sig["low"], sig["close"], sig["atr"], self.params)
@@ -422,9 +436,7 @@ class Trader:
             except Exception as e:
                 log.warning("%s/%s stop шилжүүлж чадсангүй (%s) -> үнэ аль хэдийн давсан тул хааж байна",
                             self.acc.name, sym, e)
-                self.broker.close(sym)
-                self.finish_trade(t, "trail")
-                return True
+                return self.close_trade(t, "trail")
         return False
 
     def new_signals(self, bar_now: int) -> tuple[dict, bool]:
