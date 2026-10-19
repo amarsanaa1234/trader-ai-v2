@@ -659,10 +659,7 @@ class Trader:
         try:
             r = news_eval.evaluate(self.st)
             self.st.set("news_eval", r)
-            notify(f"📰 NEWS CHECK · {self.m.label}
-
-{r['scored']} scored headlines in {r['days']} days.
-"
+            notify(f"📰 NEWS CHECK · {self.m.label}\n\n{r['scored']} scored headlines in {r['days']} days.\n"
                    "Results are on the web report page.")
         except Exception as e:
             log.warning("Мэдээний шалгалт: %s", e)
