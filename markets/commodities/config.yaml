@@ -57,7 +57,8 @@ no_entry:
 event_countries: [USD]
 
 news_feeds:
-  kitco: https://www.kitco.com/rss/
+  forexlive_commodities: https://www.forexlive.com/feed/commodities
+  investing_commodities_analysis: https://www.investing.com/rss/commodities.rss
   oilprice: https://oilprice.com/rss/main
   investing_commodities: https://www.investing.com/rss/news_11.rss
 

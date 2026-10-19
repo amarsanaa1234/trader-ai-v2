@@ -120,6 +120,9 @@ def score_news(st: Storage) -> int:
     if answer is None:
         return 0
     items = answer.get("items", [])
+    # when the score became known (a backtest may only use it from then on) and which AI wrote it
+    scored_at = now_ms()
+    ai_name = ai.model_name()
 
     rows, seen = [], set()
     for it in items:
@@ -131,7 +134,8 @@ def score_news(st: Storage) -> int:
         seen.add((idx, it["asset"]))
         strength = min(max(float(it.get("strength", 0)), 0.0), 1.0)
         score = SENTIMENT_SIGN.get(it.get("sentiment"), 0.0) * strength
-        rows.append((news[idx]["ts"], it["asset"], score, strength, str(it.get("reason", ""))[:200]))
+        rows.append((news[idx]["ts"], it["asset"], score, strength, str(it.get("reason", ""))[:200],
+                     scored_at, ai_name))
     st.insert_sentiment(rows)
     st.mark_scored([n["id"] for n in news])
     return len(rows)

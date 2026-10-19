@@ -16,6 +16,11 @@ FALLBACK_MODELS = ("claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "clau
 _warned = False
 
 
+def model_name() -> str:
+    """Which AI scores the news (stored with every score, to compare AIs later)."""
+    return f"claude:{CLAUDE_MODEL}" if NEWS_AI == "claude" else f"ollama:{OLLAMA_MODEL}" if NEWS_AI == "ollama" else "off"
+
+
 def enabled() -> bool:
     """True if an AI backend is configured and reachable."""
     global _warned

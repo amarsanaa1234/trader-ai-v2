@@ -43,6 +43,7 @@ class Storage:
         self._add_columns("trades", (("dist", "REAL"), ("best", "REAL"), ("partial_done", "INTEGER DEFAULT 0"),
                                      ("review", "TEXT"), ("regime", "INTEGER"), ("user", "TEXT")))
         self._add_columns("equity_log", (("user", "TEXT"),))
+        self._add_columns("sentiment", (("scored_ts", "INTEGER"), ("model", "TEXT")))
         self._add_columns("carry", (("user", "TEXT"),))
         self.db.commit()
 
@@ -107,7 +108,8 @@ class Storage:
         self.db.commit()
 
     def insert_sentiment(self, rows):
-        self.db.executemany("INSERT INTO sentiment VALUES (?, ?, ?, ?, ?)", rows)
+        self.db.executemany("INSERT INTO sentiment (ts, asset, score, confidence, reason, scored_ts, model) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?)", [tuple(r) + (None,) * (7 - len(r)) for r in rows])
         self.db.commit()
 
     def recent_sentiment(self, asset, since_ms):
