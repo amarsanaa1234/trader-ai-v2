@@ -71,7 +71,8 @@ def data(user: str) -> dict:
         "open_trades": open_trades,
         "prices": prices({t["symbol"] for t in open_trades}),
         "pending": a["pending"],
-        "trades": st.closed_trades(mode, 50, user),
+        "trades": st.closed_trades(mode, 300, user),   # the page shows 10 at a time
+        "heartbeat": st.get("heartbeat"),             # when the bot last ran (is it running?)
         "params": {"note": params.get("note"), "updated": params.get("updated_utc"), "metrics": params.get("metrics"),
                    "pattern_edges": params.get("params", {}).get("pattern_edges")},
         "shadows": [{**{k: s.get(k) for k in ("id", "created", "forward", "live_forward", "backtest")},
@@ -87,7 +88,7 @@ def data(user: str) -> dict:
         "events": events.upcoming(st, hours=24 * 7),
         "blackout": {"before_min": BLACKOUT_BEFORE_MIN, "after_min": BLACKOUT_AFTER_MIN, "now": events.blackout(st)},
         "drift": drift(st, user),
-        **m.dashboard_extras(st),   # market-specific panels (crypto: Strategy 2)
+        **m.dashboard_extras(st),   # market-specific panels
     }
 
 

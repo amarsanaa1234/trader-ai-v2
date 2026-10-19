@@ -64,11 +64,11 @@ def manage(st: Storage, broker, equity: float, halted: bool, allow_new: bool = T
         rate_apr = apr(recent_rates(sym))
         reason = None
         if broken:
-            reason = "hedge эвдэрсэн"
+            reason = "hedge broken"
         elif px >= c["perp_entry"] * (1 + risk_guard.CARRY_MAX_ADVERSE_MOVE):
-            reason = f"үнэ {risk_guard.CARRY_MAX_ADVERSE_MOVE:.0%} өссөн (margin хамгаалалт)"
+            reason = f"price rose {risk_guard.CARRY_MAX_ADVERSE_MOVE:.0%} (margin protection)"
         elif rate_apr < _cfg()["exit_apr"]:
-            reason = f"funding {rate_apr:.1%}/жил болж буурсан"
+            reason = f"funding fell to {rate_apr:.1%} per year"
         elif halted:
             reason = "kill switch"
         if reason:
@@ -87,15 +87,15 @@ def manage(st: Storage, broker, equity: float, halted: bool, allow_new: bool = T
         try:
             r = broker.carry_open(cand["symbol"], notional)
         except Exception as e:
-            notify(to=user, text=f"❌ Carry {cand['symbol']} нээж чадсангүй: {e}", key=f"carryerr{cand['symbol']}", every_sec=21600)
+            notify(to=user, text=f"❌ Carry {cand['symbol']}: could not open: {e}", key=f"carryerr{cand['symbol']}", every_sec=21600)
             continue
         st.insert_carry({"mode": mkt().mode, "user": user, "symbol": cand["symbol"], "qty": r["qty"], "spot_entry": r["spot_px"],
                          "perp_entry": r["perp_px"], "opened_ts": now_ms(), "status": "open", "fees": r["fees"],
                          "funding": 0.0, "last_funding_ts": now_ms()})
         carry_notional += notional
-        notify(to=user, text="\n".join(["🏦 CARRY НЭЭЛЭЭ", f"{cand['symbol'].split('/')[0]} · spot худалдан авалт + futures short", "",
-                          f"Хэмжээ:   {notional:,.0f} $", f"Funding:  ≈ {cand['apr']:.1%} жилд",
-                          "Үнийн хөдөлгөөн тэглэгдэж, funding-ийн орлого үлдэнэ"]))
+        notify(to=user, text="\n".join(["🏦 CARRY OPENED", f"{cand['symbol'].split('/')[0]} · spot buy + futures short", "",
+                          f"Size:     {notional:,.0f} $", f"Funding:  ≈ {cand['apr']:.1%} per year",
+                          "Price moves cancel out; the funding income is what remains"]))
 
 
 def close(st: Storage, broker, c: dict, reason: str, user: str | None = None) -> None:
@@ -106,8 +106,8 @@ def close(st: Storage, broker, c: dict, reason: str, user: str | None = None) ->
     fees = (c["fees"] or 0) + r["fees"]
     pnl = price_pnl + (c["funding"] or 0) - fees
     st.update_carry(c["id"], status="closed", closed_ts=now_ms(), pnl=pnl, fees=fees, note=reason)
-    notify(to=user, text="\n".join(["🏦 CARRY ХААЛАА", f"{c['symbol'].split('/')[0]}", "", f"Шалтгаан:  {reason}",
-                      f"Funding:   {c['funding'] or 0:+.2f} $", f"Шимтгэл:   {-fees:+.2f} $", f"Нийт:      {pnl:+.2f} $"]))
+    notify(to=user, text="\n".join(["🏦 CARRY CLOSED", f"{c['symbol'].split('/')[0]}", "", f"Reason:   {reason}",
+                      f"Funding:  {c['funding'] or 0:+.2f} $", f"Fees:     {-fees:+.2f} $", f"Total:    {pnl:+.2f} $"]))
 
 
 def backtest(symbols=None, days: int = 730) -> list[dict]:

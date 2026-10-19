@@ -13,6 +13,7 @@ timeframe: 1h
 history_days: 730
 entry_order: maker      # maker = post-only limit (0.02%), market = immediate (0.05%)
 paper_start_equity: 1000
+review_reference: BTC/USDT:USDT   # trade reviews compare each trade with what BTC did
 
 costs:                  # fractions of price
   maker: 0.0002

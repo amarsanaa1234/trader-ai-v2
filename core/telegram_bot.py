@@ -17,20 +17,20 @@ from .settings import DATA_ROOT, TELEGRAM_BOT_TOKEN
 
 log = logging.getLogger(__name__)
 
-HELP = """Командууд:
-/status – данс, position, допамин
-/stop – шинэ арилжаа нээхийг зогсооно (нээлттэйг stop/tp-ээр нь үлдээнэ)
-/resume – дахин эхлүүлнэ
-/closeall – бүх position-ыг хаах (баталгаажуулалт асууна)
-/report – 7 хоногийн тайлан
-/resetpeak – 30%-ийн drawdown зогсолтыг шалгаад дахин нээх
-/help – энэ жагсаалт
-Нэг зах зээлд: /stop fx, /status crypto гэх мэт (зах зээлгүй бол бүгдэд)"""
+HELP = """Commands:
+/status – balance, positions, dopamine
+/stop – stop opening new trades (open ones keep their stop/target)
+/resume – start opening trades again
+/closeall – close every position (asks you to confirm)
+/report – 7-day report
+/resetpeak – re-enable trading after the 30% drawdown stop (check first)
+/help – this list
+One market only: add its name, e.g. /stop fx, /status crypto (no name = every market)"""
 
 ADMIN_HELP = """
-👑 Админ:
-/users – хэрэглэгчид, тэдний данс
-/emergency – БҮХ хүний бүх арилжааг зогсоож хаах (баталгаажуулалт асууна)"""
+👑 Admin:
+/users – everyone and their accounts
+/emergency – stop and close EVERYONE's trading (asks you to confirm)"""
 
 
 def enabled() -> bool:

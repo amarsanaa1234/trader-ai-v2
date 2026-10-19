@@ -126,36 +126,36 @@ def check_entry(
 ) -> Decision:
     """side: +1 long, -1 short. Returns the allowed quantity (base units)."""
     if paused:
-        return Decision(False, reason="таны /stop командаар түр зогссон")
+        return Decision(False, reason="paused by your /stop command")
     if halted:
-        return Decision(False, reason="kill switch идэвхтэй (өдрийн алдагдлын хязгаар)")
+        return Decision(False, reason="kill switch is on (daily loss limit)")
     if blackout:
-        return Decision(False, reason=f"чухал үйл явдлын үе: {blackout}")
+        return Decision(False, reason=f"major news window: {blackout}")
     if equity <= 0 or entry <= 0:
-        return Decision(False, reason="equity/үнэ буруу")
+        return Decision(False, reason="invalid balance/price")
     lim = limits()
     if open_positions >= lim["max_open_positions"]:
-        return Decision(False, reason=f"нээлттэй position {lim['max_open_positions']}-д хүрсэн")
+        return Decision(False, reason=f"already {lim['max_open_positions']} open positions (the limit)")
     if trades_today >= lim["max_trades_per_day"]:
-        return Decision(False, reason=f"өдрийн арилжааны тоо {lim['max_trades_per_day']}-д хүрсэн")
+        return Decision(False, reason=f"daily trade limit of {lim['max_trades_per_day']} reached")
     if side not in (1, -1):
-        return Decision(False, reason="чиглэл буруу")
+        return Decision(False, reason="invalid direction")
     # The stop must sit on the losing side of the entry.
     if (side == 1 and stop >= entry) or (side == -1 and stop <= entry):
-        return Decision(False, reason="stop-loss буруу талд байна")
+        return Decision(False, reason="stop-loss is on the wrong side")
 
     max_leverage, min_stop, max_stop = market_bounds()
     stop_dist = abs(entry - stop)
     stop_pct = stop_dist / entry
     if stop_pct < min_stop:
-        return Decision(False, reason=f"stop хэт ойрхон ({stop_pct:.2%})")
+        return Decision(False, reason=f"stop too close ({stop_pct:.2%})")
     if stop_pct > max_stop:
-        return Decision(False, reason=f"stop хэт хол ({stop_pct:.2%})")
+        return Decision(False, reason=f"stop too far ({stop_pct:.2%})")
 
     dd_mult = drawdown_multiplier(equity, peak_equity)
     if dd_mult == 0.0:
-        return Decision(False, reason=f"оргилоосоо {DRAWDOWN_HALT:.0%} унасан тул зогслоо. "
-                                      "Шалгаад /resetpeak гэж бичнэ үү")
+        return Decision(False, reason=f"down {DRAWDOWN_HALT:.0%} from the peak, so trading stopped. "
+                                      "Check, then send /resetpeak")
     # a person may choose LESS risk than the global 1%, never more
     base = min(RISK_PER_TRADE, risk_per_trade) if risk_per_trade else RISK_PER_TRADE
     risk_frac = base * dd_mult
@@ -163,26 +163,26 @@ def check_entry(
         risk_frac *= CORRELATED_RISK_SCALE
     risk_frac = min(risk_frac, lim["max_total_open_risk"] - open_risk / equity)
     if risk_frac <= RISK_PER_TRADE * 0.1:
-        return Decision(False, reason="нийт нээлттэй эрсдэл хязгаартаа хүрсэн")
+        return Decision(False, reason="total open risk limit reached")
     cap = max_currency_risk()
     if cap is not None:
         risk_frac = min(risk_frac, cap - same_currency_risk)
         if risk_frac <= RISK_PER_TRADE * 0.1:
-            return Decision(False, reason=f"нэг валют дээрх эрсдэл {cap:.0%}-д хүрсэн")
+            return Decision(False, reason=f"risk on one currency reached {cap:.0%}")
 
     qty = equity * risk_frac / stop_dist
     max_notional = equity * max_leverage - open_notional
     if max_notional <= 0:
-        return Decision(False, reason="leverage хязгаар дүүрсэн")
+        return Decision(False, reason="leverage limit reached")
     qty = min(qty, max_notional / entry)
     return Decision(True, qty=qty, reason="ok", risk_fraction=risk_frac)
 
 
 def check_carry(*, equity: float, carry_notional: float, notional: float) -> Decision:
     if notional > equity * CARRY_PER_POSITION + 1e-9:
-        return Decision(False, reason="нэг carry position хэт том")
+        return Decision(False, reason="carry position too large")
     if carry_notional + notional > equity * CARRY_MAX_FRACTION:
-        return Decision(False, reason=f"carry нийт {CARRY_MAX_FRACTION:.0%} хязгаарт хүрсэн")
+        return Decision(False, reason=f"carry total limit of {CARRY_MAX_FRACTION:.0%} reached")
     return Decision(True, reason="ok")
 
 

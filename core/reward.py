@@ -41,6 +41,17 @@ def mood(dopamine: float) -> str:
     return "😟 шинэ арга хайж байна"
 
 
+def mood_en(dopamine: float) -> str:
+    """English mood for Telegram (the dashboard keeps the Mongolian one)."""
+    if dopamine > 0.4:
+        return "😄 motivated"
+    if dopamine >= 0.0:
+        return "🙂 calm"
+    if dopamine > -0.4:
+        return "😐 cautious"
+    return "😟 looking for new ideas"
+
+
 def max_drawdown(equity: np.ndarray) -> float:
     if len(equity) == 0:
         return 0.0

@@ -94,8 +94,8 @@ class Trader:
         wanted = {u.name: u for u in self.m.traders(users_mod.load_users(markets.AVAILABLE))}
         for name in [n for n in self.accounts if n not in wanted]:
             self.accounts.pop(name)
-            notify(f"👤 {name}: {self.m.label}-ээс хасагдлаа (.env-ээс устгагдсан эсвэл түлхүүр алга). "
-                   "Нээлттэй position-ууд биржид stop/tp-тэйгээ үлдэнэ.")
+            notify(f"👤 {name}: removed from {self.m.label} (deleted from .env or keys missing). "
+                   "Open positions stay on the exchange with their stop/target.")
         for name, u in wanted.items():
             if name in self.accounts:
                 self.accounts[name].user = u   # pick up changed settings (risk, chat id)
@@ -103,11 +103,11 @@ class Trader:
             try:
                 self.accounts[name] = Account(u, self.st)
             except Exception as e:
-                notify(f"🚨 {name}: {self.m.label} данс холбогдсонгүй: {e}", key=f"accerr{name}", every_sec=3600)
+                notify(f"🚨 {name}: could not connect the {self.m.label} account: {e}", key=f"accerr{name}", every_sec=3600)
                 continue
             if announce:
-                notify(f"👤 Шинэ хэрэглэгч: {name} ({self.m.label}, {self.m.mode})")
-                notify(f"👋 Сайн байна уу, {name}! Таны {self.m.label} данс ботод холбогдлоо. /help", to=u)
+                notify(f"👤 New user: {name} ({self.m.label}, {self.m.mode})")
+                notify(f"👋 Hello {name}! Your {self.m.label} account is now connected to the bot. /help", to=u)
         if not self.accounts:
             log.warning("%s: арилжаалах хэрэглэгч алга (.env USER<n>_MARKETS, түлхүүрүүдийг шалгана уу)", self.m.name)
 
@@ -142,7 +142,7 @@ class Trader:
                 day_start = int(datetime.strptime(d["date"], "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() * 1000)
                 n_closed = sum(1 for t in self.st.closed_trades(self.m.mode, 200, self.acc.name)
                                if (t["closed_ts"] or 0) >= day_start)
-                notify(M.daily(d["date"], change, equity - d["start_equity"], equity, dop, reward.mood(dop), n_closed),
+                notify(M.daily(d["date"], change, equity - d["start_equity"], equity, dop, reward.mood_en(dop), n_closed),
                        to=self.to())
             d = {"date": today, "start_equity": equity, "halted": False, "trades": 0}
             self.acc.set("day", d)
@@ -178,7 +178,7 @@ class Trader:
         self.broker.cancel_protection(trade["symbol"])  # leftover stop/TP must not hit a future position
         hours = (now_ms() - trade["opened_ts"]) / 3_600_000
         notify(M.closed(trade["symbol"], SIDE_NUM[trade["side"]], trade["entry"], exit_px, pnl, r_mult, reason,
-                        hours, rew, dop, reward.mood(dop)), to=self.to())
+                        hours, rew, dop, reward.mood_en(dop)), to=self.to())
         _review_async(trade, self.to())
 
     def directional(self, positions: dict) -> dict:
@@ -198,17 +198,17 @@ class Trader:
                 # Rule: every position must have a stop on the exchange.
                 try:
                     self.broker.place_stop(sym, side, positions[sym]["qty"], t["stop"])
-                    notify(f"⚠️ {sym}: stop-loss алга байсныг дахин тавилаа", key=f"stop{sym}", every_sec=600,
+                    notify(f"⚠️ {sym}: the stop-loss was missing, placed it again", key=f"stop{sym}", every_sec=600,
                            to=self.to())
                 except Exception as e:
-                    notify(f"🚨 {sym}: stop тавьж чадсангүй ({e}) -> хааж байна", to=self.to())
+                    notify(f"🚨 {sym}: could not place the stop ({e}) -> closing", to=self.to())
                     self.broker.close(sym)
                     self.finish_trade(t, "no_stop")
         known = {t["symbol"] for t in self.open_trades()} | \
                 {c["symbol"] for c in self.st.open_carries(self.m.mode, self.acc.name)}
         for sym in positions:
             if sym not in known and not self.acc.get(f"pending:{sym}"):
-                notify(f"⚠️ {sym}: ботын мэдэхгүй position байна (гараар нээсэн?). Бот үүнд хүрэхгүй.",
+                notify(f"⚠️ {sym}: a position the bot does not know (opened by hand?). The bot will not touch it.",
                        key=f"unknown{sym}", every_sec=3600, to=self.to())
 
     def close_everything(self, reason: str, include_carry: bool):
@@ -312,7 +312,7 @@ class Trader:
         try:
             pend = self.broker.place_entry(sym, side, dec.qty, limit)
         except Exception as e:
-            notify(f"❌ {sym} захиалга тавьж чадсангүй: {e}", key=f"openerr{sym}", every_sec=1800, to=self.to())
+            notify(f"❌ {sym}: could not place the order: {e}", key=f"openerr{sym}", every_sec=1800, to=self.to())
             return None
         pend.update(side=side, dist=dist, bar_ts=sig["bar_ts"], sig=sig, retries=0,
                     risk_fraction=dec.risk_fraction, expires=sig["bar_ts"] + 2 * self.tf_ms,
@@ -335,7 +335,7 @@ class Trader:
         try:
             self.broker.protect(sym, side, qty, stop, tp, partial)
         except Exception as e:
-            notify(f"🚨 {sym}: stop тавьж чадсангүй ({e}) -> шууд хааж байна", to=self.to())
+            notify(f"🚨 {sym}: could not place the stop ({e}) -> closing now", to=self.to())
             self.broker.close(sym)
             return
         sig = pend["sig"]
@@ -472,17 +472,17 @@ class Trader:
         dop = self.acc.get("dopamine", 0.0)
         start = day.get("start_equity") or equity
         trades = self.open_trades()
-        state = "⏸ Түр зогссон (/resume)" if self.paused() else ("🛑 Kill switch" if day.get("halted") else "▶️ Ажиллаж байна")
+        state = "⏸ Paused (/resume)" if self.paused() else ("🛑 Kill switch" if day.get("halted") else "▶️ Running")
         lines = [
-            f"📊 СТАТУС · {datetime.now().strftime('%m/%d %H:%M')}",
+            f"📊 STATUS · {datetime.now().strftime('%m/%d %H:%M')}",
             "",
-            f"💰 Данс:     {equity:,.2f} {mkt().currency}",
-            f"📅 Өнөөдөр:  {equity / start - 1:+.2%} ({equity - start:+,.2f} $)",
-            f"🧠 Допамин:  {dop:+.2f} {reward.mood(dop)}",
+            f"💰 Balance:  {equity:,.2f} {mkt().currency}",
+            f"📅 Today:    {equity / start - 1:+.2%} ({equity - start:+,.2f} {mkt().currency})",
+            f"🧠 Dopamine: {dop:+.2f} {reward.mood_en(dop)}",
             f"{state} · position {len(trades)}/{risk_guard.limits()['max_open_positions']}",
         ]
         if trades:
-            lines += ["", "━━━ НЭЭЛТТЭЙ POSITION ━━━"]
+            lines += ["", "━━━ OPEN POSITIONS ━━━"]
         for t in trades:
             side = SIDE_NUM[t["side"]]
             try:
@@ -495,25 +495,25 @@ class Trader:
             moved = (px / t["entry"] - 1) * 100
             lines += [
                 "",
-                f"{'🟢' if pnl >= 0 else '🔴'} {base_asset(t['symbol'])} {t['side'].upper()} · {hours:.0f} цаг"
-                + (" · 💰 хагас авсан" if t["partial_done"] else ""),
-                f"   Орсон:  {M.px(t['entry'])}",
-                f"   Одоо:   {M.px(px)} ({moved:+.2f}%)",
-                f"   Ашиг:   {pnl:+,.2f} $ ({r:+.2f}R)",
-                f"   ❌ Stop: {M.px(t['stop'])} ({abs(t['stop'] / px - 1) * 100:.1f}% зайтай)",
-                f"   🎯 TP:   {M.px(t['tp'])} ({abs(t['tp'] / px - 1) * 100:.1f}% зайтай)",
+                f"{'🟢' if pnl >= 0 else '🔴'} {base_asset(t['symbol'])} {t['side'].upper()} · {hours:.0f} h"
+                + (" · 💰 half taken" if t["partial_done"] else ""),
+                f"   Entry:  {M.px(t['entry'])}",
+                f"   Now:    {M.px(px)} ({moved:+.2f}%)",
+                f"   P/L:    {pnl:+,.2f} {mkt().currency} ({r:+.2f}R)",
+                f"   ❌ Stop: {M.px(t['stop'])} ({abs(t['stop'] / px - 1) * 100:.1f}% away)",
+                f"   🎯 TP:   {M.px(t['tp'])} ({abs(t['tp'] / px - 1) * 100:.1f}% away)",
             ]
         pend = [(s, self.acc.get(f"pending:{s}")) for s in self.m.symbols]
         pend = [(s, p) for s, p in pend if p]
         if pend:
-            lines += ["", "━━━ ХҮЛЭЭГДЭЖ БУЙ ЗАХИАЛГА ━━━"]
+            lines += ["", "━━━ WAITING ORDERS ━━━"]
             lines += [f"🎯 {base_asset(s)} {SIDE_NAME[p['side']].upper()} limit @ {M.px(p['limit'])}" for s, p in pend]
         carries = self.st.open_carries(self.m.mode, self.acc.name)
         if carries:
             lines += ["", "━━━ FUNDING CARRY ━━━"]
             lines += [f"🏦 {base_asset(c['symbol'])}: funding {c['funding'] or 0:+.2f} $" for c in carries]
         if not trades and not pend:
-            lines += ["", "Нээлттэй position алга. Дохио хүлээж байна."]
+            lines += ["", "No open positions. Waiting for a signal."]
         return "\n".join(lines)
 
     def handle_commands(self):
@@ -523,7 +523,7 @@ class Trader:
                 continue
             acc = self.accounts.get(user.name)
             if acc is None:
-                notify(f"Таны данс {self.m.label}-д идэвхгүй байна.", to=user)
+                notify(f"Your account is not active in {self.m.label}.", to=user)
                 continue
             self.use(acc)
             equity = self.view.get(user.name, (None,))[0] or self.broker.equity()
@@ -531,25 +531,25 @@ class Trader:
                 notify(self.status_text(equity), to=user)
             elif cmd == "/stop":
                 acc.set("paused", True)
-                notify("⏸ Шинэ арилжаа зогслоо. Нээлттэй position stop/tp-ээрээ үргэлжилнэ. /resume гэж эхлүүлнэ.", to=user)
+                notify("⏸ No new trades. Open positions keep their stop/target. Send /resume to start again.", to=user)
             elif cmd == "/resume":
                 acc.set("paused", False)
-                notify("▶️ Дахин эхэллээ.", to=user)
+                notify("▶️ Started again.", to=user)
             elif cmd == "/closeall":
                 acc.set("closeall_asked", now_ms())
-                notify("Бүх position (carry орно) хаах уу? 2 минутын дотор /closeall_yes гэж бичнэ үү.", to=user)
+                notify("Close every position (carry too)? Send /closeall_yes within 2 minutes.", to=user)
             elif cmd == "/closeall_yes":
                 if now_ms() - acc.get("closeall_asked", 0) < 120_000:
                     self.close_everything("manual", include_carry=True)
                     acc.set("paused", True)
-                    notify("🧹 Бүгдийг хаалаа, таны бот зогссон төлөвт байна (/resume).", to=user)
+                    notify("🧹 Everything is closed and your bot is paused (/resume).", to=user)
                 else:
-                    notify("Хугацаа дууссан. Эхлээд /closeall гэж бичнэ үү.", to=user)
+                    notify("Too late. Send /closeall first.", to=user)
             elif cmd == "/report":
                 notify(review.weekly_report(self.st, self.m.mode, user.name), to=user)
             elif cmd == "/resetpeak":
                 acc.set("peak_equity", equity)
-                notify(f"Оргил equity-г {equity:.2f} болгож шинэчиллээ. Drawdown хязгаар дахин тоологдоно.", to=user)
+                notify(f"Peak balance reset to {equity:.2f}. The drawdown limits count from here.", to=user)
             else:
                 notify(telegram_bot.HELP + (telegram_bot.ADMIN_HELP if user.is_admin else ""), to=user)
 
@@ -565,20 +565,20 @@ class Trader:
             notify("\n".join(lines), to=admin)
         elif cmd == "/emergency":
             self.st.set("emergency_asked", now_ms())
-            notify("🚨 БҮХ хүний бүх position-ыг хааж, ботыг зогсоох уу? 2 минутын дотор /emergency_yes.", to=admin)
+            notify("🚨 Close EVERY position of EVERY person and stop the bot? Send /emergency_yes within 2 minutes.", to=admin)
         elif cmd == "/emergency_yes":
             if now_ms() - self.st.get("emergency_asked", 0) > 120_000:
-                notify("Хугацаа дууссан. Эхлээд /emergency гэж бичнэ үү.", to=admin)
+                notify("Too late. Send /emergency first.", to=admin)
                 return
             for acc in self.accounts.values():
                 self.use(acc)
                 try:
                     self.close_everything("manual", include_carry=True)
                 except Exception as e:
-                    notify(f"🚨 {acc.name}: хааж чадсангүй: {e}", to=admin)
+                    notify(f"🚨 {acc.name}: could not close: {e}", to=admin)
                 acc.set("paused", True)
-                notify("🚨 Админ яаралтай зогсоолт хийлээ: бүх position хаагдаж, бот зогссон.", to=acc.user)
-            notify("🚨 Бүх хүний арилжаа зогсоож, хаалаа. Хүн бүр /resume-ээр дахин эхлүүлнэ.", to=admin)
+                notify("🚨 Emergency stop by the admin: every position was closed and the bot is paused.", to=acc.user)
+            notify("🚨 Everyone's trading is stopped and closed. Each person restarts with /resume.", to=admin)
 
     # ================= periodic jobs =================
     def maybe_news(self):
@@ -602,6 +602,11 @@ class Trader:
                 events.refresh(self.st)
             except Exception as e:
                 log.warning("Календарь: %s", e)
+        try:  # 24h after a stop-out: was the stop too tight or did it save us?
+            for tid, sym, side, user, note in review.followups(self.st):
+                notify(f"⏰ 24H CHECK · #{tid}\n{base_asset(sym)} {side.upper()}\n\n{note}", to=user)
+        except Exception as e:
+            log.warning("Дүгнэлтийн дахин шалгалт: %s", e)
         for name, acc in self.accounts.items():   # market-specific hourly jobs per person (crypto: carry)
             if name in self.view:
                 self.use(acc)
@@ -637,15 +642,15 @@ class Trader:
         try:
             new = research.research(self.st)
             if new:
-                notify(f"📚 Интернэтээс {len(new)} шинэ стратеги олдлоо, backtest хийж байна")
+                notify(f"📚 Found {len(new)} new strategies online, backtesting them")
         except Exception as e:
             log.warning("Судалгаа: %s", e)
         lead = self.primary()   # the improver follows the main admin's dopamine
         rep = improver.improve(self.st, self.m.symbols, dopamine=lead.get("dopamine", 0.0) if lead else 0.0)
         for s in rep.get("new_shadows", []):
-            notify(f"🧪 Шинэ shadow {s['id']}: vault оноо {s['vault']['score']}, бодит цаг хугацаанд туршиж эхэллээ")
+            notify(f"🧪 New shadow {s['id']}: vault score {s['vault']['score']}, now forward-testing on live candles")
         if rep.get("shadow_promoted"):
-            notify(f"🧠 Shadow {rep['shadow_promoted']} ирээдүйн өгөгдөл дээр давж гарсан тул идэвхтэй тохиргоо боллоо")
+            notify(f"🧠 Shadow {rep['shadow_promoted']} beat the live settings on new candles, so it is now the active setting")
         self.params = load_params()
         self.check_live_vs_backtest()
         if now.weekday() == 0 and self.st.get("weekly_on") != today:
@@ -675,7 +680,7 @@ class Trader:
             except Exception as e:  # one person's problem never stops the others
                 log.exception("%s: алдаа", acc.name)
                 notify(f"🚨 {acc.name}: {e}", key=f"err{acc.name}", every_sec=1800, to=acc.user)
-                notify(f"🚨 {acc.name}-ийн дансанд алдаа: {e}", key=f"aerr{acc.name}", every_sec=1800)
+                notify(f"🚨 Error in {acc.name}'s account: {e}", key=f"aerr{acc.name}", every_sec=1800)
 
     def tick(self):
         if time.time() - self.last_users > USERS_EVERY_SEC:
@@ -720,7 +725,7 @@ class Trader:
                     errors += 1
                     log.exception("tick алдаа")
                     if errors >= 5:
-                        notify(f"🚨 Дараалсан {errors} алдаа: {e}", key="errors", every_sec=1800)
+                        notify(f"🚨 {errors} errors in a row: {e}", key="errors", every_sec=1800)
                 # check pending limit orders more often, so a fill gets its stop quickly
                 time.sleep(5 if self.any_pending() else LOOP_SECONDS)
         finally:
