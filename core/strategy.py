@@ -95,6 +95,8 @@ def clamp_params(p: dict) -> dict:
     if out["ema_fast"] >= out["ema_slow"]:
         out["ema_fast"] = max(space["ema_fast"][0], out["ema_slow"] // 3)
     out["adx_range"] = min(out["adx_range"], out["adx_trend"] - 2)
+    if (getattr(mkt(), "cfg", None) or {}).get("use_news") is False:
+        out["w_news"] = 0.0   # news has no history to backtest, so the market can switch it off
     return out
 
 

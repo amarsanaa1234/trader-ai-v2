@@ -65,6 +65,13 @@ def currency_risk(open_legs, symbol: str, side: int) -> float:
     return max(0.0, expo.get(base, 0.0) * side, -expo.get(quote, 0.0) * side)
 
 
+def market_risk_cap() -> float:
+    """Risk per trade for the active market: config risk.max_risk_per_trade, never above
+    RISK_PER_TRADE (owner, 2026-10-19: 0.5% on every market; 1% did worse over 8 years)."""
+    r = (getattr(mkt(), "cfg", None) or {}).get("risk") or {}
+    return min(float(r.get("max_risk_per_trade", RISK_PER_TRADE)), RISK_PER_TRADE)
+
+
 def market_bounds() -> tuple[float, float, float]:
     """(max_leverage, min_stop_distance, max_stop_distance) for the active market."""
     r = (getattr(mkt(), "cfg", None) or {}).get("risk") or {}
@@ -157,7 +164,8 @@ def check_entry(
         return Decision(False, reason=f"down {DRAWDOWN_HALT:.0%} from the peak, so trading stopped. "
                                       "Check, then send /resetpeak")
     # a person may choose LESS risk than the global 1%, never more
-    base = min(RISK_PER_TRADE, risk_per_trade) if risk_per_trade else RISK_PER_TRADE
+    cap = market_risk_cap()
+    base = min(cap, risk_per_trade) if risk_per_trade else cap
     risk_frac = base * dd_mult
     if max_corr_same_side >= CORRELATED:
         risk_frac *= CORRELATED_RISK_SCALE

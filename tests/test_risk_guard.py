@@ -11,10 +11,12 @@ def entry(**kw):
     return rg.check_entry(**args)
 
 
-def test_one_percent_risk():
+def test_risk_per_trade_is_the_market_cap():
     d = entry()
     assert d.allowed
-    assert d.qty * 2.0 == pytest.approx(10.0)  # stop 2 away -> lose 1% of 1000
+    cap = rg.market_risk_cap()                 # crypto: 0.5% (owner, 2026-10-19), never above 1%
+    assert cap == pytest.approx(0.005) and cap <= rg.RISK_PER_TRADE
+    assert d.qty * 2.0 == pytest.approx(1000 * cap)  # stop 2 away -> lose 0.5% of 1000
 
 
 def test_stop_must_be_on_the_losing_side():

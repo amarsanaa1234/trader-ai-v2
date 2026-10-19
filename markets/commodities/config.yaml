@@ -1,0 +1,68 @@
+# Commodities (OANDA v20 CFDs). Anything here can be overridden from .env as COMMODITIES_<KEY>,
+# e.g. COMMODITIES_MODE=demo. Market data uses the same OANDA token as FX.
+# Per-person keys: USER<n>_COMMODITIES_OANDA_TOKEN / _ACCOUNT (ideally an OANDA sub-account,
+# so FX and commodities don't share one balance).
+
+label: "🥇 Түүхий эд"
+currency: AUD           # the OANDA account's currency
+mode: signal            # signal (paper on real prices) until a separate OANDA (sub-)account is set up
+symbols:                # metals, energy, grains: 8 markets that often move differently from each other
+  - XAU_USD             # gold
+  - XAG_USD             # silver
+  - XPT_USD             # platinum
+  - XCU_USD             # copper
+  - BCO_USD             # Brent crude oil
+  - NATGAS_USD          # natural gas
+  - CORN_USD
+  - WHEAT_USD
+timeframe: 4h           # FX and crypto both did better on 4h than on 1h
+history_days: 2920      # 8 years
+book_days: 730          # OANDA crowd history (gold only; others have no book)
+book_every_hours: 6
+paper_start_equity: 10000
+entry_order: maker
+
+htf:
+  1h: [[4h, 50], [1D, 20]]
+  4h: [[1D, 20], [1W, 10]]
+
+# The dollar basket (commodities are priced in USD) and the prices other sources read
+usd_basket: [EUR_USD, USD_JPY, GBP_USD, AUD_USD, USD_CAD, USD_CHF, NZD_USD]
+aux_symbols: [EUR_USD, USD_JPY, GBP_USD, AUD_USD, USD_CAD, USD_CHF, NZD_USD, SPX500_USD, USB02Y_USD]
+
+costs:                  # fallback; the measured spread of each instrument (spreads.json) is used
+  maker: 0.0002
+  taker: 0.00025
+  slippage: 0.0001
+
+risk:                   # commodities move ~1-2% a day: wider stops than FX, tighter than crypto
+  min_stop_distance: 0.002
+  max_stop_distance: 0.06
+  max_leverage: 3
+  max_risk_per_trade: 0.005   # owner, 2026-10-19: 0.5% on every market
+  max_spread: 0.002
+  max_currency_risk: 0.02     # every commodity here is priced in USD: at most 2% leaning one way on USD
+
+validation:             # the strict checks, same as FX and crypto
+  min_fold_trades: 40
+  min_vault_trades: 60
+  portfolio: true
+  max_p_value: 0.20
+  random_runs: 100
+
+no_entry:
+  rollover_utc: [20.5, 22.5]
+  friday_after_utc: 18
+
+event_countries: [USD]
+
+news_feeds:
+  kitco: https://www.kitco.com/rss/
+  oilprice: https://oilprice.com/rss/main
+  investing_commodities: https://www.investing.com/rss/news_11.rss
+
+research_sources:
+  r/Commodities: https://www.reddit.com/r/Commodities/top/.rss?t=week
+  r/algotrading: https://www.reddit.com/r/algotrading/top/.rss?t=week
+
+use_news: false

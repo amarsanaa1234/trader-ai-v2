@@ -167,5 +167,12 @@ def load_frame(st: Storage, symbol: str, tf: str) -> pd.DataFrame:
                             st.db, params=(symbol,)).set_index("ts")
     for col in ("global_ls", "top_ls", "oi_value"):
         df[col] = pos[col].reindex(df.index) if not pos.empty else np.nan
+    from markets.base import tf_to_ms
+
+    from . import extra
+    step = tf_to_ms(tf)
+    df["premium_z"] = extra.premium_z(st, symbol, df["close"], step)
+    df["spx_move"] = extra.stocks_move(df.index, step)
+    df["usd_move"] = extra.usd_move(df.index, step)
     df["news"] = 0.0
     return df

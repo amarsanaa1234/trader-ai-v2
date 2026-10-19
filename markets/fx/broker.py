@@ -210,7 +210,8 @@ class OandaBroker:
 
     def positions(self):
         out = {}
-        pos = self.c.get(self.c.acct("/openPositions"))["positions"]
+        mine = set(mkt().symbols)   # one OANDA account may hold several markets' positions
+        pos = [p for p in self.c.get(self.c.acct("/openPositions"))["positions"] if p["instrument"] in mine]
         if not pos:
             return out
         qs = bid_ask(self.c, [p["instrument"] for p in pos])

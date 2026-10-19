@@ -22,6 +22,7 @@ class FX(Market):
     source_names = ("crowd", "usd", "tsmom", "carry", "rates", "cot", "xasset", "session",
                     "orders", "yields", "month_end")
     default_params = {
+        "w_news": 0.0,        # owner, 2026-10-19: news can't be backtested, so it gets no say for now
         # OANDA's own clients: unusually many long favours shorts (retail is usually
         # on the wrong side; the self-improver may flip it if the data disagrees)
         "w_crowd": -0.4,
@@ -171,7 +172,8 @@ class FX(Market):
         macro.sync_all(st)
 
     def load_frame(self, st, symbol: str, tf: str | None = None) -> pd.DataFrame:
-        return data.load_frame(st, symbol, tf or self.timeframe, self.symbols)
+        # the dollar basket: the traded pairs for FX; other OANDA markets list FX pairs in usd_basket
+        return data.load_frame(st, symbol, tf or self.timeframe, self.cfg.get("usd_basket") or self.symbols)
 
     def price(self, symbol: str) -> float:
         from .broker import bid_ask

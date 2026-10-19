@@ -21,8 +21,16 @@ def _zscore(s: pd.Series, win: int = 168) -> pd.Series:
 class Crypto(Market):
     name = "crypto"
     label = "₿ Крипто"
-    source_names = ("funding", "fng", "crowd", "top", "oi")
+    source_names = ("funding", "fng", "crowd", "top", "oi", "tsmom", "premium", "stocks", "usd", "funding_chg")
     default_params = {
+        "w_news": 0.0,        # owner, 2026-10-19: news can't be backtested, so it gets no say for now
+        # added 2026-10-19 with weight 0 (= no effect) until the self-improver proves them:
+        "w_tsmom": 0.0,       # multi-week trend of the coin itself (Strategy 2's momentum part)
+        "tsmom_days": 40,
+        "w_premium": 0.0,     # Coinbase premium: US buyers paying more than Binance (Strategy 2's other part)
+        "w_stocks": 0.0,      # S&P 500 over the last day
+        "w_usd": 0.0,         # US dollar over the last day
+        "w_funding_chg": 0.0, # funding rising/falling over the last day
         "w_funding": -0.5,    # negative = contrarian: crowded longs (high funding) favour shorts
         "w_fng": -0.3,        # negative = contrarian: extreme greed favours shorts
         # Crowd positioning (Binance keeps only 30 days, so these stay fixed until
@@ -35,6 +43,8 @@ class Crypto(Market):
     param_space = {
         "w_funding": (-1.5, 1.0, False), "w_fng": (-1.5, 1.0, False),
         "funding_extreme": (0.0001, 0.001, False),
+        "w_tsmom": (-1.0, 1.5, False), "tsmom_days": (10, 90, True), "w_premium": (-1.0, 1.5, False),
+        "w_stocks": (-1.0, 1.5, False), "w_usd": (-1.5, 1.0, False), "w_funding_chg": (-1.5, 1.5, False),
     }
     rule_columns = ("funding", "fng")
     rule_help = "funding (8h funding rate, e.g. 0.0001), fng (Fear&Greed 0-100)"
@@ -70,26 +80,43 @@ class Crypto(Market):
     def sources(self, df: pd.DataFrame, p: dict) -> dict:
         c = df["close"]
         oi_chg = df["oi_value"].pct_change(24, fill_method=None)
-        return {
+        step = int(np.min(np.diff(df.index.to_numpy()[:200]))) if len(df) > 2 else 3_600_000
+        bpd = max(1, 86_400_000 // step)                      # candles per day
+        logc = np.log(c)
+        day_vol = logc.diff(bpd).rolling(60 * bpd, min_periods=20 * bpd).std()
+        days = int(p["tsmom_days"])
+        out = {
             "funding": (df["funding"] / p["funding_extreme"]).clip(-1, 1),
             "fng": ((df["fng"] - 50) / 50).clip(-1, 1),
             "crowd": _zscore(df["global_ls"]).fillna(0),
             "top": _zscore(df["top_ls"]).fillna(0),
             "oi": (np.tanh(oi_chg * 10) * np.sign(c.pct_change(24))).fillna(0),
+            "tsmom": np.tanh(logc.diff(days * bpd) / (day_vol * np.sqrt(days))).fillna(0),
+            "funding_chg": np.tanh(df["funding"].diff(bpd) / p["funding_extreme"]).fillna(0),
         }
+        for name, col, scale in (("premium", "premium_z", 2.0), ("stocks", "spx_move", 0.01), ("usd", "usd_move", 0.004)):
+            out[name] = (np.tanh(df[col] / scale) if col in df else pd.Series(0.0, index=df.index)).fillna(0)
+        return out
 
     # ---------- data ----------
     def sync(self, st, symbols=None) -> None:
         data.sync_all(st, symbols or self.symbols, self.timeframe, self.history_days)
 
     def sync_symbol(self, st, symbol: str) -> None:
-        data.sync_candles(st, symbol, self.timeframe, self.history_days)
+        # 1h is always kept fresh too: Strategy 2 and the Coinbase premium use hourly prices
+        for tf in {self.timeframe, "1h"}:
+            data.sync_candles(st, symbol, tf, self.history_days)
         data.sync_funding(st, symbol, self.history_days)
 
     def daily_sync(self, st) -> None:
         for s in self.symbols:
             data.sync_positioning(st, s)
         data.sync_fng(st)
+        try:   # Coinbase prices for the premium source (the Strategy 2 service also keeps them fresh)
+            from . import strategy2
+            strategy2.sync_coinbase(st)
+        except Exception as e:
+            log.warning("Coinbase: %s", e)
 
     def load_frame(self, st, symbol: str, tf: str | None = None) -> pd.DataFrame:
         return data.load_frame(st, symbol, tf or self.timeframe)

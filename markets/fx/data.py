@@ -37,6 +37,12 @@ CROSS_ASSET = {
     "CAD": [(1.0, "BCO_USD")],
     "JPY": [(-1.0, "SPX500_USD")],
     "CHF": [(-0.5, "SPX500_USD"), (0.5, "XAU_USD")],
+    # commodities: growth metals and oil follow stocks, gold is a safe haven
+    "XAU": [(-0.5, "SPX500_USD")],
+    "XAG": [(0.5, "SPX500_USD")],
+    "XPT": [(0.5, "SPX500_USD")],
+    "XCU": [(1.0, "SPX500_USD")],
+    "BCO": [(0.5, "SPX500_USD")],
 }
 ASSET_SCALE = {"BCO_USD": 0.02, "XAU_USD": 0.01, "XCU_USD": 0.015, "SPX500_USD": 0.01}
 # Government bond prices OANDA quotes daily (price up = yield down = currency usually weaker)
@@ -118,6 +124,9 @@ def sync_book(st: Storage, symbol: str, days: int, every_hours: int = 6, kind: s
     history is filled at `every_hours` spacing, then the newest snapshot is added hourly.
     kind: "book" (clients' positions) or "orders" (clients' waiting orders)."""
     step = every_hours * HOUR_MS
+    now = _book_at(symbol, None, kind)
+    if now is None:          # OANDA keeps no book for this instrument (e.g. oil, gas): skip its history
+        return 0
     last = st.db.execute(f"SELECT MAX(ts) m FROM {kind} WHERE symbol=?", (symbol,)).fetchone()["m"]
     start = max(last + step if last else 0, now_ms() - days * DAY_MS)
     start = (start // step + 1) * step
@@ -126,9 +135,7 @@ def sync_book(st: Storage, symbol: str, days: int, every_hours: int = 6, kind: s
     if times:
         with ThreadPoolExecutor(8) as pool:
             rows = [r for r in pool.map(lambda t: _book_at(symbol, t // 1000, kind), times) if r]
-    now = _book_at(symbol, None, kind)
-    if now:
-        rows.append(now)
+    rows.append(now)
     st.db.executemany(f"INSERT OR REPLACE INTO {kind} VALUES (?, ?, ?)", [(symbol, ts, p) for ts, p in rows])
     st.db.commit()
     return len(rows)

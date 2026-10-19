@@ -9,11 +9,26 @@ symbols:
   - BNB/USDT:USDT
   - XRP/USDT:USDT
   - SOL/USDT:USDT
-timeframe: 1h
+timeframe: 4h            # owner, 2026-10-19 (look-back test: 1h -9.6% vs 4h about -0.2% per 2 months)
 history_days: 730
 entry_order: maker      # maker = post-only limit (0.02%), market = immediate (0.05%)
 paper_start_equity: 1000
 review_reference: BTC/USDT:USDT   # trade reviews compare each trade with what BTC did
+
+risk:
+  max_risk_per_trade: 0.005   # owner, 2026-10-19: 0.5% on every market
+
+validation:                   # owner, 2026-10-19: FX's strict checks (look-back test: 4h + strict was best)
+  min_fold_trades: 40
+  min_vault_trades: 60
+  portfolio: true
+  max_p_value: 0.20
+  random_runs: 100
+
+# Higher timeframes the score looks at, per base timeframe: [pandas rule, EMA length]
+htf:
+  1h: [[4h, 50], [1D, 20]]
+  4h: [[1D, 20], [1W, 10]]
 
 costs:                  # fractions of price
   maker: 0.0002
@@ -38,3 +53,7 @@ research_sources:
   r/CryptoCurrencyTrading: https://www.reddit.com/r/CryptoCurrencyTrading/top/.rss?t=week
   r/Daytrading: https://www.reddit.com/r/Daytrading/top/.rss?t=week
   r/BitcoinMarkets: https://www.reddit.com/r/BitcoinMarkets/top/.rss?t=week
+
+# News sentiment can't be backtested (no history), so it gets no say in decisions
+# for now (owner, 2026-10-19). Headlines are still collected for later.
+use_news: false

@@ -59,7 +59,7 @@ def test_user_risk_can_only_be_lower():
     from core import risk_guard as rg
     base = dict(equity=1000.0, entry=100.0, stop=98.0, side=1, open_positions=0, open_notional=0.0,
                 trades_today=0, halted=False, peak_equity=1000.0)
-    assert rg.check_entry(**base, risk_per_trade=0.005).qty == pytest.approx(rg.check_entry(**base).qty / 2)
+    assert rg.check_entry(**base, risk_per_trade=0.0025).qty == pytest.approx(rg.check_entry(**base).qty / 2)
     assert rg.check_entry(**base, risk_per_trade=0.05).qty == pytest.approx(rg.check_entry(**base).qty)
 
 

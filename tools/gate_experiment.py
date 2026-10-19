@@ -27,13 +27,17 @@ _W = {}
 
 
 def _init(market, cut):
+    # read-only: workers must never review/rewrite the strategy library (16 of them at once corrupt it)
     import markets
-    from core import improver
+    from core import library
     from core.context import activate
+    from core.features import add_static_features
     from core.storage import Storage
-    activate(markets.get(market))
-    frames = improver.load_frames(Storage(), markets.get(market).symbols)
-    _W["frames"] = {s: f[f.index < cut] for s, f in frames.items()}
+    m = markets.get(market)
+    activate(m)
+    st, strats = Storage(), library.approved()
+    frames = {s: m.load_frame(st, s) for s in m.symbols}
+    _W["frames"] = {s: add_static_features(f, strats)[lambda d: d.index < cut] for s, f in frames.items() if len(f) > 3000}
 
 
 def _wf(p):

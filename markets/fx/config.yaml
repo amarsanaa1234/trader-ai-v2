@@ -44,8 +44,9 @@ risk:                   # FX moves ~0.1%/hour, so crypto's 0.3% minimum stop wou
   max_leverage: 3             # owner's choice (2026-10-18; was 2)
   max_spread: 0.0004          # no new entry while the live spread is wider than 0.04% of price
   max_currency_risk: 0.02     # open risk leaning one way on one currency (e.g. 3 x "USD falls") <= 2%
+  max_risk_per_trade: 0.005   # owner, 2026-10-19: 0.5% (1% did worse over 8 years)
   ladder:                     # risk per trade steps with the last 30 closed trades
-    levels: [0.005, 0.01]     # start at 0.5%, never above 1%
+    levels: [0.005]           # one step while the cap is 0.5% (was 0.5% -> 1%)
     window: 30
     up_avg_r: 0.0             # move up: average R above this ...
     up_profit_factor: 1.2     # ... and profit factor above this
@@ -78,3 +79,7 @@ research_sources:
   r/Forex: https://www.reddit.com/r/Forex/top/.rss?t=week
   r/algotrading: https://www.reddit.com/r/algotrading/top/.rss?t=week
   r/Daytrading: https://www.reddit.com/r/Daytrading/top/.rss?t=week
+
+# News sentiment can't be backtested (no history), so it gets no say in decisions
+# for now (owner, 2026-10-19). Headlines are still collected for later.
+use_news: false

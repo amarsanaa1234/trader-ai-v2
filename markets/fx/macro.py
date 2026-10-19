@@ -37,7 +37,11 @@ RATE_SERIES = {
 }
 # CFTC contract codes (legacy futures-only report); USD has no matching future here
 COT_CODES = {"EUR": "099741", "JPY": "097741", "GBP": "096742", "AUD": "232741",
-             "CAD": "090741", "CHF": "092741", "NZD": "112741"}
+             "CAD": "090741", "CHF": "092741", "NZD": "112741",
+             # commodities (the base of e.g. XAU_USD): gold, silver, platinum, copper, crude (WTI as
+             # the Brent proxy), natural gas, corn, wheat
+             "XAU": "088691", "XAG": "084691", "XPT": "076651", "XCU": "085692", "BCO": "067651",
+             "NATGAS": "023651", "CORN": "002602", "WHEAT": "001602"}
 
 
 def _fred(series: str) -> pd.Series:
