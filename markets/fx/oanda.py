@@ -28,7 +28,13 @@ class Client:
 
     def req(self, method: str, path: str, **kw):
         for attempt in range(4):
-            r = self.s.request(method, self.base + path, timeout=20, **kw)
+            try:
+                r = self.s.request(method, self.base + path, timeout=20, **kw)
+            except requests.RequestException as e:   # dropped connection / timeout: back off and retry
+                if attempt == 3:
+                    raise OandaError(f"{method} {path}: {e}") from e
+                time.sleep(0.5 * 2 ** attempt)
+                continue
             if r.status_code == 429 or r.status_code >= 500:   # rate limit / server hiccup: back off
                 time.sleep(0.5 * 2 ** attempt)
                 continue

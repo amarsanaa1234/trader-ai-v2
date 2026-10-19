@@ -40,7 +40,7 @@ risk:                   # commodities move ~1-2% a day: wider stops than FX, tig
   max_stop_distance: 0.06
   max_leverage: 3
   max_risk_per_trade: 0.005   # owner, 2026-10-19: 0.5% on every market
-  max_spread: 0.002
+  max_spread: 0.004           # gas and grains normally cost ~0.2% per round trip
   max_currency_risk: 0.02     # every commodity here is priced in USD: at most 2% leaning one way on USD
 
 validation:             # the strict checks, same as FX and crypto
