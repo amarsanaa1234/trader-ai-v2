@@ -629,6 +629,28 @@ class Trader:
                 if not acc.user.is_admin:
                     notify(f"{acc.name}: {msg}")
 
+    _improving = None          # the daily self-improvement thread
+    _improved = False          # set by that thread when new settings may be waiting
+
+    def _improve_job(self, dopamine: float):
+        try:
+            rep = improver.improve(Storage(), self.m.symbols, dopamine=dopamine)   # own DB connection
+            for s in rep.get("new_shadows", []):
+                notify(f"🧪 New shadow {s['id']}: vault score {s['vault']['score']}, now forward-testing on live candles")
+            if rep.get("shadow_promoted"):
+                notify(f"🧠 Shadow {rep['shadow_promoted']} beat the live settings on new candles, "
+                       "so it is now the active setting")
+        except Exception:
+            log.exception("Өөрийгөө сайжруулах ажил амжилтгүй")
+        self._improved = True
+
+    def maybe_pick_up_improvement(self):
+        """Back on the trading loop: load what the improvement thread saved, then check live results."""
+        if self._improved:
+            self._improved = False
+            self.params = load_params()
+            self.check_live_vs_backtest()
+
     def maybe_daily(self):
         now = datetime.now(timezone.utc)
         today = now.strftime("%Y-%m-%d")
@@ -646,13 +668,12 @@ class Trader:
         except Exception as e:
             log.warning("Судалгаа: %s", e)
         lead = self.primary()   # the improver follows the main admin's dopamine
-        rep = improver.improve(self.st, self.m.symbols, dopamine=lead.get("dopamine", 0.0) if lead else 0.0)
-        for s in rep.get("new_shadows", []):
-            notify(f"🧪 New shadow {s['id']}: vault score {s['vault']['score']}, now forward-testing on live candles")
-        if rep.get("shadow_promoted"):
-            notify(f"🧠 Shadow {rep['shadow_promoted']} beat the live settings on new candles, so it is now the active setting")
-        self.params = load_params()
-        self.check_live_vs_backtest()
+        dop = lead.get("dopamine", 0.0) if lead else 0.0
+        # The search takes minutes to an hour; run it beside the trading loop so stops,
+        # pending orders, new candles and the heartbeat carry on meanwhile.
+        if not (self._improving and self._improving.is_alive()):
+            self._improving = threading.Thread(target=self._improve_job, args=(dop,), daemon=True)
+            self._improving.start()
         if now.weekday() == 0 and self.st.get("weekly_on") != today:
             self.st.set("weekly_on", today)
             for acc in self.accounts.values():
@@ -703,6 +724,7 @@ class Trader:
             if done:
                 self.st.set("checked_bar", bar_now)
         self.maybe_daily()
+        self.maybe_pick_up_improvement()
         self.st.set("heartbeat", now_ms())  # the web admin page shows when each market last ran
 
     def any_pending(self) -> bool:
