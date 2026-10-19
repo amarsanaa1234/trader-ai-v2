@@ -57,7 +57,11 @@ def sync_candles(st: Storage, symbol: str, tf: str, days: int) -> int:
     since = (last + step) if last else now_ms() - days * DAY_MS
     added = 0
     while since < now_ms() - step:
+        # OANDA aligns 4h/daily candles to 17:00 New York by default (21:00/22:00 UTC); the bot
+        # checks for closed candles on the UTC grid (00, 04, 08 ...), so ask for UTC-aligned
+        # candles - otherwise every decision came up to 3 hours late.
         js = c.get(f"/instruments/{symbol}/candles", granularity=GRAN[tf], price="M",
+                   dailyAlignment=0, alignmentTimezone="UTC",
                    **{"from": f"{since / 1000:.0f}", "count": 5000})
         rows = [(int(float(k["time"]) * 1000), float(k["mid"]["o"]), float(k["mid"]["h"]), float(k["mid"]["l"]),
                  float(k["mid"]["c"]), float(k["volume"])) for k in js["candles"] if k["complete"]]
