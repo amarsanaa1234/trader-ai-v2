@@ -218,6 +218,10 @@ def compute(df: pd.DataFrame, p: dict) -> pd.DataFrame:
     skip = mkt().entry_filter(df, p)
     if skip is not None:
         sig[np.asarray(skip, dtype=bool)] = 0
+    sides = mkt().side_filter(df, p)
+    if sides is not None:
+        sig[(sig == 1) & np.asarray(sides[0], dtype=bool)] = 0
+        sig[(sig == -1) & np.asarray(sides[1], dtype=bool)] = 0
     sig[: int(p["ema_slow"])] = 0  # indicator warm-up
     out["signal"] = sig
     return out

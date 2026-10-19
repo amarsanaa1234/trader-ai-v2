@@ -13,6 +13,8 @@ PART_LABEL = {
     "usd": "US dollar trend", "tsmom": "Multi-week momentum", "carry": "Interest-rate carry",
     "rates": "Interest-rate change", "cot": "Big funds (COT)", "xasset": "Oil / gold / stocks",
     "session": "Session breakout", "orders": "Waiting orders", "yields": "Bond yields", "month_end": "Month-end flows",
+    # commodities
+    "curve": "Futures curve (shortage / glut)", "curve_chg": "Futures curve change",
 }
 REASON = {
     "tp": "🎯 Take-profit hit", "stop": "❌ Stop-loss hit", "stop_after_partial": "🔒 Stop hit after taking half",

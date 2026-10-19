@@ -205,13 +205,19 @@ def _hold_cost(st: Storage, symbol: str, index: pd.Index, tf: str) -> np.ndarray
     if not row:
         return np.zeros(len(index))
     h_day = (row["short_rate"] - row["long_rate"]) / 2 / 365
-    days = [int(x) for x in row["days"].split(",")]
+    return h_day * rollover_days(row["days"], index, tf)
+
+
+def rollover_days(days_csv: str | None, index: pd.Index, tf: str) -> np.ndarray:
+    """Days of swap charged at the 17:00 New York rollover inside each candle (0 if none;
+    3 on the day that covers the weekend). days_csv: Monday..Sunday from OANDA."""
+    days = [int(x) for x in days_csv.split(",")] if days_csv else [1, 1, 3, 1, 1, 0, 0]
     opened = pd.to_datetime(index, unit="ms", utc=True).tz_convert("America/New_York")
     closed = opened + pd.Timedelta(milliseconds=TF_MS[tf])
     roll = closed.normalize() + pd.Timedelta(hours=17)
     charged = (opened < roll) & (roll <= closed)
-    mult = np.array([days[d] for d in roll.weekday])
-    return np.where(charged, h_day * mult, 0.0)
+    mult = np.array([days[d] for d in roll.weekday], dtype=float)
+    return np.where(charged, mult, 0.0)
 
 
 def _usd_momentum(st: Storage, tf: str, symbols, index: pd.Index) -> np.ndarray:

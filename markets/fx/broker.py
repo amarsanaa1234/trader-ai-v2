@@ -35,9 +35,26 @@ def bid_ask(client: Client, symbols) -> dict:
     return out
 
 
+def swap_days(since_ms: int, until_ms: int, days_csv: str | None) -> int:
+    """Swap days charged at the 17:00 New York rollovers between two moments
+    (OANDA's days per weekday, Monday..Sunday; usually triple once a week)."""
+    import pandas as pd
+    days = [int(x) for x in days_csv.split(",")] if days_csv else [1, 1, 3, 1, 1, 0, 0]
+    a = pd.Timestamp(since_ms, unit="ms", tz="UTC").tz_convert("America/New_York")
+    b = pd.Timestamp(until_ms, unit="ms", tz="UTC").tz_convert("America/New_York")
+    total, roll = 0, a.normalize() + pd.Timedelta(hours=17)
+    if roll <= a:
+        roll += pd.Timedelta(days=1)
+    while roll <= b:
+        total += days[roll.weekday()]
+        roll += pd.Timedelta(days=1)
+    return total
+
+
 class PaperBroker:
     """Same behaviour as the crypto paper broker, but fills at OANDA's real bid/ask
-    (so the spread is paid like on a real account) and without carry."""
+    (so the spread is paid like on a real account) and OANDA's daily swap is charged
+    or paid at the 17:00 New York rollover, like on a real account."""
 
     def __init__(self, st: Storage, account):
         self.st, self.acc = st, account
@@ -73,8 +90,42 @@ class PaperBroker:
 
     def _fill_entry(self, symbol, side, qty, px):
         self.s["positions"][symbol] = {"side": side, "qty": qty, "entry": px, "stop": None, "tp": None,
-                                       "partial": None, "fees": 0.0, "realized": 0.0}
+                                       "partial": None, "fees": 0.0, "realized": 0.0, "swap_ts": now_ms()}
         self._save()
+
+    def _charge_swap(self, quotes=None):
+        """OANDA's swap for every rollover since it was last charged: position value x
+        the side's yearly rate / 365 x days (the rate is negative when the side pays)."""
+        now = now_ms()
+        changed = False
+        for sym, p in self.s["positions"].items():
+            last = p.get("swap_ts")
+            if last is None:                 # opened before swaps were charged: start from now
+                p["swap_ts"], changed = now, True
+                continue
+            days = swap_days(last, now, self._financing_days(sym))
+            if days:
+                rate = self._financing_rate(sym, p["side"])
+                mid = (quotes or {}).get(sym, {}).get("mid") or self._q(sym)["mid"]
+                amount = p["qty"] * mid * rate / 365 * days
+                self.s["cash"] += amount
+                p["realized"] += amount
+                p["swap"] = p.get("swap", 0.0) + amount
+                p["swap_ts"], changed = now, True
+        if changed:
+            self._save()
+
+    def _financing_row(self, symbol):
+        return self.st.db.execute("SELECT long_rate, short_rate, days FROM financing WHERE symbol=?",
+                                  (symbol,)).fetchone()
+
+    def _financing_rate(self, symbol, side):
+        row = self._financing_row(symbol)
+        return 0.0 if not row else float(row["long_rate"] if side == 1 else row["short_rate"])
+
+    def _financing_days(self, symbol):
+        row = self._financing_row(symbol)
+        return row["days"] if row else None
 
     def entry_status(self, symbol, pend):
         p = self.s["pending"].get(symbol)
@@ -132,6 +183,7 @@ class PaperBroker:
         self._save()
 
     def positions(self):
+        self._charge_swap()
         for sym, p in list(self.s["positions"].items()):
             if not p["stop"]:
                 continue
@@ -152,6 +204,7 @@ class PaperBroker:
         unreal = 0.0
         if self.s["positions"]:
             qs = bid_ask(data_client(), list(self.s["positions"]))
+            self._charge_swap(qs)
             for s, p in self.s["positions"].items():
                 px = qs[s]["bid"] if p["side"] == 1 else qs[s]["ask"]
                 unreal += p["side"] * p["qty"] * (px - p["entry"])

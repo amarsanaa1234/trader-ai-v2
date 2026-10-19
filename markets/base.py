@@ -91,6 +91,11 @@ class Market:
         """Tunable bars-to-skip filter (e.g. FX: the day's range is already used up), or None."""
         return None
 
+    def side_filter(self, df: pd.DataFrame, p: dict):
+        """(long_bad, short_bad) bool arrays: bars where only that side may not start
+        (e.g. commodities: holding it would cost too much swap), or None."""
+        return None
+
     def tf_ms(self, tf: str | None = None) -> int:
         return tf_to_ms(tf or self.timeframe)
 
