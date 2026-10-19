@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="mn">
 <head>
 <meta charset="utf-8">
@@ -53,8 +53,8 @@
   details.item > summary { list-style: none; cursor: pointer; padding: 10px 12px; display: flex; gap: 10px;
                            align-items: center; flex-wrap: wrap; }
   details.item > summary::-webkit-details-marker { display: none; }
-  details.item > summary::after { content: "â–¾"; margin-left: auto; color: var(--muted); }
-  details.item[open] > summary::after { content: "â–´"; }
+  details.item > summary::after { content: "▾"; margin-left: auto; color: var(--muted); }
+  details.item[open] > summary::after { content: "▴"; }
   details.item .body { padding: 0 12px 12px; font-size: 13.5px; }
   .title { font-weight: 600; }
   .sub { color: var(--muted); font-size: 12.5px; }
@@ -91,77 +91,77 @@
 <body>
 <main>
   <header>
-    <h1>ðŸ¤– Crypto AI</h1>
-    <span class="muted" id="updated">Ð°Ñ‡Ð°Ð°Ð»Ð¶ Ð±Ð°Ð¹Ð½Ð°â€¦</span>
+    <h1>🤖 Crypto AI</h1>
+    <span class="muted" id="updated">ачаалж байна…</span>
   </header>
   <div id="banners"></div>
   <div class="grid" id="kpis"></div>
 
   <div class="card row"><div>
-    <h2>Equity (30 Ñ…Ð¾Ð½Ð¾Ð³)</h2>
+    <h2>Equity (30 хоног)</h2>
     <div class="chart-box"><canvas id="eq"></canvas></div>
   </div></div>
 
   <div class="row two">
-    <div class="card"><h2>ÐÑÑÐ»Ñ‚Ñ‚ÑÐ¹ position</h2><div class="scroll" id="open"></div></div>
+    <div class="card"><h2>Нээлттэй position</h2><div class="scroll" id="open"></div></div>
     <div class="card">
-      <div class="head"><h2>ðŸ“… Ð£Ð´Ð°Ñ…Ð³Ò¯Ð¹ Ð±Ð¾Ð»Ð¾Ñ… Ñ‡ÑƒÑ…Ð°Ð» Ò¯Ð¹Ð» ÑÐ²Ð´Ð°Ð»</h2><button class="q" data-help="h-events" aria-label="Ð¢Ð°Ð¹Ð»Ð±Ð°Ñ€">?</button></div>
+      <div class="head"><h2>📅 Удахгүй болох чухал үйл явдал</h2><button class="q" data-help="h-events" aria-label="Тайлбар">?</button></div>
       <div class="scroll" id="events"></div>
     </div>
   </div>
 
   <div class="card row"><div>
-    <div class="head"><h2>Ð¡Ò¯Ò¯Ð»Ð¸Ð¹Ð½ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð°Ð½ÑƒÑƒÐ´</h2>
+    <div class="head"><h2>Сүүлийн арилжаанууд</h2>
       <div class="pager" id="trades-pager"></div></div>
     <div class="scroll" id="trades"></div>
   </div></div>
 
   <div class="row two">
     <div class="card">
-      <div class="head"><h2>ðŸ§ª Shadow test</h2><button class="q" data-help="h-shadow" aria-label="Ð¢Ð°Ð¹Ð»Ð±Ð°Ñ€">?</button></div>
+      <div class="head"><h2>🧪 Shadow test</h2><button class="q" data-help="h-shadow" aria-label="Тайлбар">?</button></div>
       <div class="scroll" id="shadows"></div>
     </div>
-    <div class="card"><h2>ðŸ¦ Funding carry</h2><div class="scroll" id="carry"></div></div>
+    <div class="card"><h2>🏦 Funding carry</h2><div class="scroll" id="carry"></div></div>
   </div>
 
   <div class="row two">
     <div class="card">
-      <div class="head"><h2>ðŸ“š Ð¡Ñ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸Ð¹Ð½ ÑÐ°Ð½</h2><button class="q" data-help="h-lib" aria-label="Ð¢Ð°Ð¹Ð»Ð±Ð°Ñ€">?</button></div>
+      <div class="head"><h2>📚 Стратегийн сан</h2><button class="q" data-help="h-lib" aria-label="Тайлбар">?</button></div>
       <div class="scroll" id="library"></div>
     </div>
-    <div class="card"><h2>Ð˜Ð´ÑÐ²Ñ…Ñ‚ÑÐ¹ Ñ‚Ð¾Ñ…Ð¸Ñ€Ð³Ð¾Ð¾</h2><div id="params"></div></div>
+    <div class="card"><h2>Идэвхтэй тохиргоо</h2><div id="params"></div></div>
   </div>
 
   <div id="modal" class="modal" role="dialog" aria-modal="true" hidden>
-    <div class="sheet"><button class="x" aria-label="Ð¥Ð°Ð°Ñ…">Ã—</button><div id="modal-body"></div></div>
+    <div class="sheet"><button class="x" aria-label="Хаах">×</button><div id="modal-body"></div></div>
   </div>
 
   <div id="helps" hidden>
     <div class="help" id="h-events">
-      <p>ÐÐÐ£-Ñ‹Ð½ Ñ‚Ð¾Ð¼Ð¾Ð¾Ñ…Ð¾Ð½ ÑÐ´Ð¸Ð¹Ð½ Ð·Ð°ÑÐ³Ð¸Ð¹Ð½ Ð¼ÑÐ´ÑÑ (Ð¸Ð½Ñ„Ð»ÑÑ†Ð¸, Ð°Ð¶Ð»Ñ‹Ð½ Ð±Ð°Ð¹Ñ€, Fed-Ð¸Ð¹Ð½ Ñ…Ò¯Ò¯Ð³Ð¸Ð¹Ð½ ÑˆÐ¸Ð¹Ð´Ð²ÑÑ€ Ð³ÑÑ… Ð¼ÑÑ‚) Ð³Ð°Ñ€Ð°Ñ… Ò¯ÐµÐ´ ÐºÑ€Ð¸Ð¿Ñ‚Ð¾ Ð·Ð°Ñ… Ð·ÑÑÐ» <b>ÑÐµÐºÑƒÐ½Ð´Ñ‹Ð½ Ð´Ð¾Ñ‚Ð¾Ñ€</b> Ð¾Ð³Ñ†Ð¾Ð¼ Ñ…Ó©Ð´Ó©Ð»Ð¶ Ð±Ð¾Ð»Ð´Ð¾Ð³.</p>
-      <p>Ð¢Ð¸Ð¹Ð¼ÑÑÑ Ð±Ð¾Ñ‚ Ð¸Ð¹Ð¼ Ð¼ÑÐ´ÑÑÐ½ÑÑÑ <b id="bo-before">60</b> Ð¼Ð¸Ð½ÑƒÑ‚Ñ‹Ð½ Ó©Ð¼Ð½Ó©Ó©Ñ <b id="bo-after">60</b> Ð¼Ð¸Ð½ÑƒÑ‚Ñ‹Ð½ Ð´Ð°Ñ€Ð°Ð° Ñ…Ò¯Ñ€Ñ‚ÑÐ» <b>ÑˆÐ¸Ð½Ñ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð° Ð½ÑÑÑ…Ð³Ò¯Ð¹</b>. ÐÑÑÐ»Ñ‚Ñ‚ÑÐ¹ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð°Ð½ÑƒÑƒÐ´ Ð±Ð¸Ñ€Ð¶Ð¸Ð¹Ð½ stop/TP-ÑÑÑ€ÑÑ Ñ…Ð°Ð¼Ð³Ð°Ð°Ð»Ð°Ð³Ð´ÑÐ°Ð½ Ñ…ÑÐ²ÑÑÑ€ Ð±Ð°Ð¹Ð½Ð°.</p>
-      <p>"Ð¢Ð°Ð°Ð¼Ð°Ð³" Ð½ÑŒ ÑÐ´Ð¸Ð¹Ð½ Ð·Ð°ÑÐ°Ð³Ñ‡Ð´Ñ‹Ð½ Ñ…Ò¯Ð»ÑÑÐ»Ñ‚. Ð‘Ð¾Ð´Ð¸Ñ‚ Ñ‚Ð¾Ð¾ Ñ‚Ð°Ð°Ð¼Ð³Ð°Ð°Ñ Ð¸Ñ… Ð·Ó©Ñ€Ó©Ñ… Ñ‚ÑƒÑÐ°Ð¼ Ò¯Ð½Ñ Ð¾Ð³Ñ†Ð¾Ð¼ Ñ…Ó©Ð´Ó©Ð»Ð½Ó©. ÐœÑÐ´ÑÑÐ»ÑÐ» ForexFactory-Ð³Ð¾Ð¾Ñ 6 Ñ†Ð°Ð³ Ñ‚ÑƒÑ‚Ð°Ð¼ ÑˆÐ¸Ð½ÑÑ‡Ð»ÑÐ³Ð´ÑÐ½Ñ. ÐœÓ©Ñ€ Ð±Ò¯Ñ€ Ð´ÑÑÑ€ Ð´Ð°Ñ€Ð¶ Ð´ÑÐ»Ð³ÑÑ€ÑÐ½Ð³Ò¯Ð¹Ð³ Ñ…Ð°Ñ€Ð½Ð° ÑƒÑƒ.</p>
+      <p>АНУ-ын томоохон эдийн засгийн мэдээ (инфляци, ажлын байр, Fed-ийн хүүгийн шийдвэр гэх мэт) гарах үед крипто зах зээл <b>секундын дотор</b> огцом хөдөлж болдог.</p>
+      <p>Тиймээс бот ийм мэдээнээс <b id="bo-before">60</b> минутын өмнөөс <b id="bo-after">60</b> минутын дараа хүртэл <b>шинэ арилжаа нээхгүй</b>. Нээлттэй арилжаанууд биржийн stop/TP-ээрээ хамгаалагдсан хэвээр байна.</p>
+      <p>"Таамаг" нь эдийн засагчдын хүлээлт. Бодит тоо таамгаас их зөрөх тусам үнэ огцом хөдөлнө. Мэдээлэл ForexFactory-гоос 6 цаг тутам шинэчлэгдэнэ. Мөр бүр дээр дарж дэлгэрэнгүйг харна уу.</p>
     </div>
     <div class="help" id="h-shadow">
-      <p><b>Shadow test Ð³ÑÐ¶ ÑŽÑƒ Ð²Ñ?</b> Ð‘Ð¾Ñ‚ Ó©Ð´Ó©Ñ€ Ð±Ò¯Ñ€ 1,000 ÑˆÐ¸Ð½Ñ Ñ‚Ð¾Ñ…Ð¸Ñ€Ð³Ð¾Ð¾ Ñ‚ÑƒÑ€ÑˆÐ´Ð°Ð³. Ð¢Ò¯Ò¯Ñ…ÑÐ½ ÑˆÐ°Ð»Ð³Ð°Ð»Ñ‚Ñ‹Ð³ Ð´Ð°Ð²ÑÐ°Ð½ ÑˆÐ¸Ð»Ð´Ð³Ò¯Ò¯Ð´ Ð½ÑŒ <b>ÑˆÑƒÑƒÐ´ Ð¸Ð´ÑÐ²Ñ…Ð¶Ð´ÑÐ³Ð³Ò¯Ð¹</b>: ÑÑ…Ð»ÑÑÐ´ "ÑÒ¯Ò¯Ð´ÑÑ€" Ð±Ð°Ð¹Ð´Ð»Ð°Ð°Ñ€ ÑˆÐ¸Ð½Ñ Ð»Ð°Ð° Ð±Ò¯Ñ€ Ð´ÑÑÑ€ Ñ…ÑƒÑƒÑ€Ð°Ð¼Ñ‡Ð°Ð°Ñ€ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð°Ð»Ð¶, Ð¾Ð´Ð¾Ð¾Ð³Ð¸Ð¹Ð½ Ñ‚Ð¾Ñ…Ð¸Ñ€Ð³Ð¾Ð¾Ñ‚Ð¾Ð¹ <b>ÑÐ³ Ð¸Ð¶Ð¸Ð» Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°Ð½Ð´</b> Ó©Ñ€ÑÓ©Ð»Ð´Ð´Ó©Ð³.</p>
-      <p>Ó¨Ð½Ð³Ó©Ñ€ÑÓ©Ð½ Ó©Ð³Ó©Ð³Ð´Ó©Ð» Ð´ÑÑÑ€ ÑÐ°Ð¹Ð½ Ð±Ð°Ð¹ÑÐ°Ð½ Ñ‡ Ð¸Ñ€ÑÑÐ´Ò¯Ð¹Ð´ Ð¼ÑƒÑƒ Ð±Ð°Ð¹Ð´Ð°Ð³ Ñ‚Ð¾Ñ…Ð¸Ñ€Ð³Ð¾Ð¾Ð³ ÑˆÒ¯Ò¯Ñ… Ñ…Ð°Ð¼Ð³Ð¸Ð¹Ð½ Ð½Ð°Ð¹Ð´Ð²Ð°Ñ€Ñ‚Ð°Ð¹ ÑˆÐ°Ð»Ð³Ð°Ð»Ñ‚ Ð½ÑŒ ÑÐ½Ñ.</p>
-      <p>ðŸ† <b>Ð˜Ð´ÑÐ²Ñ…Ð¶Ð¸Ñ… Ð½Ó©Ñ…Ñ†Ó©Ð»:</b> <span id="sh-rules"></span></p>
-      <p>ðŸ—‘ <b id="sh-max">45</b> Ñ…Ð¾Ð½Ð¾Ð³Ð¸Ð¹Ð½ Ð´Ð¾Ñ‚Ð¾Ñ€ ÑÐ»Ð¶ Ñ‡Ð°Ð´Ð°Ð°Ð³Ò¯Ð¹, ÑÑÐ²ÑÐ» âˆ’5%-Ð¸Ð°Ñ Ð¸Ñ… Ð°Ð»Ð´ÑÐ°Ð½ shadow Ñ…Ð°ÑÐ°Ð³Ð´Ð°Ð½Ð°. Ð”Ò¯Ð½ Ó©Ð´Ó©Ñ€Ñ‚ Ð½ÑÐ³ ÑƒÐ´Ð°Ð° ÑˆÐ¸Ð½ÑÑ‡Ð»ÑÐ³Ð´ÑÐ½Ñ.</p>
+      <p><b>Shadow test гэж юу вэ?</b> Бот өдөр бүр 1,000 шинэ тохиргоо туршдаг. Түүхэн шалгалтыг давсан шилдгүүд нь <b>шууд идэвхждэггүй</b>: эхлээд "сүүдэр" байдлаар шинэ лаа бүр дээр хуурамчаар арилжаалж, одоогийн тохиргоотой <b>яг ижил хугацаанд</b> өрсөлддөг.</p>
+      <p>Өнгөрсөн өгөгдөл дээр сайн байсан ч ирээдүйд муу байдаг тохиргоог шүүх хамгийн найдвартай шалгалт нь энэ.</p>
+      <p>🏆 <b>Идэвхжих нөхцөл:</b> <span id="sh-rules"></span></p>
+      <p>🗑 <b id="sh-max">45</b> хоногийн дотор ялж чадаагүй, эсвэл −5%-иас их алдсан shadow хасагдана. Дүн өдөрт нэг удаа шинэчлэгдэнэ.</p>
     </div>
     <div class="help" id="h-lib">
-      <p>Ð¡Ð¾Ð½Ð³Ð¾Ð´Ð¾Ð³ Ð±Ð¾Ð»Ð¾Ð½ Ð¸Ð½Ñ‚ÐµÑ€Ð½ÑÑ‚ÑÑÑ AI-Ð¸Ð¹Ð½ Ð¾Ð»ÑÐ¾Ð½ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð°Ð½Ñ‹ ÑÑ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸ÑƒÐ´. Ð¡Ñ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸ Ð±Ò¯Ñ€Ð¸Ð¹Ð³ Ñ‚ÑƒÑÐ°Ð´ Ð½ÑŒ backtest Ñ…Ð¸Ð¹Ð´ÑÐ³: 2 Ð¶Ð¸Ð»Ð¸Ð¹Ð½ Ñ‚Ò¯Ò¯Ñ…Ð¸Ð¹Ð³ <b>4 Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°Ð½Ð´</b> Ñ…ÑƒÐ²Ð°Ð°Ð³Ð°Ð°Ð´, Ð¼Ó©Ð½ Ñ…Ð°Ð¼Ð³Ð¸Ð¹Ð½ ÑÒ¯Ò¯Ð»Ð¸Ð¹Ð½ <b>"vault"</b> Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°Ð½Ð´ ÑˆÐ°Ð»Ð³Ð°Ð½Ð°.</p>
-      <p>âœ… <b>Ð‘Ð°Ñ‚Ð»Ð°Ð³Ð´ÑÐ°Ð½:</b> 4 Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°Ð½Ñ‹ 3-Ñ‚ Ð½ÑŒ Ð°ÑˆÐ¸Ð³Ñ‚Ð°Ð¹, vault-Ð´ Ð°ÑˆÐ¸Ð³Ñ‚Ð°Ð¹. Ð‘Ð¾Ñ‚Ñ‹Ð½ ÑˆÐ¸Ð¹Ð´Ð²ÑÑ€Ñ‚ "ÑÐ°Ð½Ð°Ð»" Ó©Ð³Ð½Ó©.<br>âŒ <b>Ð¢ÑÐ½Ñ†ÑÑÐ³Ò¯Ð¹:</b> ÑˆÐ°Ð»Ð³Ð°Ð»Ñ‚Ñ‹Ð³ Ð´Ð°Ð²Ð¶ Ñ‡Ð°Ð´Ð°Ð°Ð³Ò¯Ð¹ Ñ‚ÑƒÐ» Ð°ÑˆÐ¸Ð³Ð»Ð°Ð³Ð´Ð°Ñ…Ð³Ò¯Ð¹.</p>
-      <p>Ð¡Ñ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸ Ð±Ò¯Ñ€ Ð´ÑÑÑ€ Ð´Ð°Ñ€Ð¶ Ð´Ò¯Ñ€ÑÐ¼, ÑˆÐ°Ð»Ð³Ð°Ð»Ñ‚Ñ‹Ð½ Ð´Ò¯Ð½Ð³ Ñ…Ð°Ñ€Ð½Ð° ÑƒÑƒ. ðŸ”Ž Ñ‚Ð¾Ð²Ñ‡Ð¾Ð¾Ñ€ Ñ‚ÑƒÑ…Ð°Ð¹Ð½ ÑÑ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸Ð¹Ð½ Ñ‚Ð°Ð»Ð°Ð°Ñ€ Google-ÑÑÑ Ñ…Ð°Ð¹Ð½Ð°.</p>
+      <p>Сонгодог болон интернэтээс AI-ийн олсон арилжааны стратегиуд. Стратеги бүрийг тусад нь backtest хийдэг: 2 жилийн түүхийг <b>4 хугацаанд</b> хуваагаад, мөн хамгийн сүүлийн <b>"vault"</b> хугацаанд шалгана.</p>
+      <p>✅ <b>Батлагдсан:</b> 4 хугацааны 3-т нь ашигтай, vault-д ашигтай. Ботын шийдвэрт "санал" өгнө.<br>❌ <b>Тэнцээгүй:</b> шалгалтыг давж чадаагүй тул ашиглагдахгүй.</p>
+      <p>Стратеги бүр дээр дарж дүрэм, шалгалтын дүнг харна уу. 🔎 товчоор тухайн стратегийн талаар Google-ээс хайна.</p>
     </div>
   </div>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
-const fmt = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v)) ? "â€“" : Number(v).toFixed(d);
-const fmtp = (v) => v == null ? "â€“" : fmt(v, Math.abs(v) < 10 ? 4 : 2);  // prices: more decimals for cheap coins
-const pct = (v) => (v === null || v === undefined) ? "â€“" : (v * 100).toFixed(2) + "%";
+const fmt = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v)) ? "–" : Number(v).toFixed(d);
+const fmtp = (v) => v == null ? "–" : fmt(v, Math.abs(v) < 10 ? 4 : 2);  // prices: more decimals for cheap coins
+const pct = (v) => (v === null || v === undefined) ? "–" : (v * 100).toFixed(2) + "%";
 const cls = (v) => v > 0 ? "up" : (v < 0 ? "down" : "");
-const time = (ms) => ms ? new Date(ms).toLocaleString() : "â€“";
+const time = (ms) => ms ? new Date(ms).toLocaleString() : "–";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 // ---- popup (modal): "?" buttons and clickable rows ----
@@ -180,39 +180,39 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal
 
 // ---- economic calendar ----
 const EVENT_INFO = [
-  [/core pce|pce price/i, "PCE Ð¸Ð½Ñ„Ð»ÑÑ†Ð¸", "Fed-Ð¸Ð¹Ð½ Ñ…Ð°Ð¼Ð³Ð¸Ð¹Ð½ Ð¸Ñ… Ð°Ð½Ñ…Ð°Ð°Ñ€Ð´Ð°Ð³ Ð¸Ð½Ñ„Ð»ÑÑ†Ð¸Ð¹Ð½ Ò¯Ð·Ò¯Ò¯Ð»ÑÐ»Ñ‚. Ð¢Ð°Ð°Ð¼Ð³Ð°Ð°Ñ Ó©Ð½Ð´Ó©Ñ€ Ð³Ð°Ñ€Ð²Ð°Ð» Ñ…Ò¯Ò¯ ÑƒÐ´Ð°Ð°Ð½ Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°Ð½Ð´ Ó©Ð½Ð´Ó©Ñ€ Ð±Ð°Ð¹Ñ… Ð¼Ð°Ð³Ð°Ð´Ð»Ð°Ð» Ð½ÑÐ¼ÑÐ³Ð´ÑÐ¶, ÐºÑ€Ð¸Ð¿Ñ‚Ð¾ Ð¸Ñ…ÑÐ²Ñ‡Ð»ÑÐ½ ÑƒÐ½Ð°Ð´Ð°Ð³."],
-  [/cpi/i, "Ð˜Ð½Ñ„Ð»ÑÑ†Ð¸ (CPI)", "Ð¥ÑÑ€ÑÐ³Ð»ÑÑÐ½Ð¸Ð¹ Ð±Ð°Ñ€Ð°Ð°Ð½Ñ‹ Ò¯Ð½Ñ Ñ…ÑÑ€ Ó©ÑÑÓ©Ð½Ð¸Ð¹Ð³ Ñ…Ð°Ñ€ÑƒÑƒÐ»Ð½Ð°. Ð¢Ð°Ð°Ð¼Ð³Ð°Ð°Ñ Ó©Ð½Ð´Ó©Ñ€ â†’ Fed Ñ…Ò¯Ò¯Ð³ Ó©Ð½Ð´Ó©Ñ€ Ð±Ð°Ñ€Ð¸Ð½Ð° â†’ ÐºÑ€Ð¸Ð¿Ñ‚Ð¾ Ð¸Ñ…ÑÐ²Ñ‡Ð»ÑÐ½ ÑƒÐ½Ð°Ð´Ð°Ð³. Ð‘Ð°Ð³Ð° â†’ ÑÑÑ€ÑÐ³ÑÑÑ€ÑÑ."],
-  [/ppi/i, "Ò®Ð¹Ð»Ð´Ð²ÑÑ€Ð»ÑÐ³Ñ‡Ð¸Ð¹Ð½ Ò¯Ð½Ñ (PPI)", "Ò®Ð¹Ð»Ð´Ð²ÑÑ€Ð»ÑÐ³Ñ‡Ð´Ð¸Ð¹Ð½ Ð·Ð°Ñ€Ð´Ð»Ñ‹Ð½ Ð¸Ð½Ñ„Ð»ÑÑ†Ð¸. CPI-Ð¸Ð¹Ð½ ÑƒÑ€ÑŒÐ´Ñ‡Ð¸Ð»ÑÐ°Ð½ Ð´Ð¾Ñ…Ð¸Ð¾ Ð±Ð¾Ð»Ð´Ð¾Ð³."],
-  [/non-farm|nfp/i, "ÐÐ¶Ð»Ñ‹Ð½ Ð±Ð°Ð¹Ñ€Ð½Ñ‹ Ñ‚Ð°Ð¹Ð»Ð°Ð½ (NFP)", "ÐÐÐ£-Ð´ Ð½ÑÐ³ ÑÐ°Ñ€Ð´ Ð½ÑÐ¼ÑÐ³Ð´ÑÑÐ½ Ð°Ð¶Ð»Ñ‹Ð½ Ð±Ð°Ð¹Ñ€. Ð¡Ð°Ñ€ Ð±Ò¯Ñ€Ð¸Ð¹Ð½ Ñ…Ð°Ð¼Ð³Ð¸Ð¹Ð½ Ñ‡ÑƒÑ…Ð°Ð» Ð¼ÑÐ´ÑÑÐ½Ð¸Ð¹ Ð½ÑÐ³. Ð¥ÑÑ‚ Ñ…Ò¯Ñ‡Ñ‚ÑÐ¹ â†’ Ñ…Ò¯Ò¯ Ó©Ð½Ð´Ó©Ñ€ Ñ…ÑÐ²ÑÑÑ€ â†’ ÐºÑ€Ð¸Ð¿Ñ‚Ð¾ Ð´Ð°Ñ€Ð°Ð¼Ñ‚Ñ‚Ð°Ð¹."],
-  [/unemployment claims/i, "ÐÐ¶Ð¸Ð»Ð³Ò¯Ð¹Ð´Ð»Ð¸Ð¹Ð½ Ñ‚ÑÑ‚Ð³ÑÐ¼Ð¶", "7 Ñ…Ð¾Ð½Ð¾Ð³ Ð±Ò¯Ñ€ Ð³Ð°Ñ€Ð´Ð°Ð³. ÐžÐ³Ñ†Ð¾Ð¼ Ó©ÑÐ²Ó©Ð» ÑÐ´Ð¸Ð¹Ð½ Ð·Ð°ÑÐ°Ð³ ÑÑƒÐ»Ð°Ñ€Ñ‡ Ð±Ð°Ð¹Ð½Ð° Ð³ÑÑÑÐ½ Ð´Ð¾Ñ…Ð¸Ð¾."],
-  [/unemployment rate/i, "ÐÐ¶Ð¸Ð»Ð³Ò¯Ð¹Ð´Ð»Ð¸Ð¹Ð½ Ñ‚Ò¯Ð²ÑˆÐ¸Ð½", "ÐÐ¶Ð¸Ð»Ð³Ò¯Ð¹ Ñ…Ò¯Ð¼Ò¯Ò¯ÑÐ¸Ð¹Ð½ Ñ…ÑƒÐ²ÑŒ. Fed-Ð¸Ð¹Ð½ ÑˆÐ¸Ð¹Ð´Ð²ÑÑ€Ñ‚ Ð½Ó©Ð»Ó©Ó©Ð»Ð´Ó©Ð³."],
-  [/minutes/i, "Fed-Ð¸Ð¹Ð½ Ñ…ÑƒÑ€Ð»Ñ‹Ð½ Ñ‚ÑÐ¼Ð´ÑÐ³Ð»ÑÐ»", "Ó¨Ð¼Ð½Ó©Ñ… Ñ…ÑƒÑ€Ð»Ñ‹Ð½ Ð½Ð°Ñ€Ð¸Ð¹Ð²Ñ‡Ð¸Ð»ÑÐ°Ð½ Ñ‚ÑÐ¼Ð´ÑÐ³Ð»ÑÐ». Ð¦Ð°Ð°ÑˆÐ¸Ð´ Ñ…Ò¯Ò¯Ð³ Ñ…ÑÑ€Ñ…ÑÐ½ Ó©Ó©Ñ€Ñ‡Ð»Ó©Ñ… Ñ‚Ð°Ð»Ð°Ð°Ñ€Ñ… ÑÑÐ¶Ò¯Ò¯Ñ€ Ó©Ð³Ð´Ó©Ð³."],
-  [/federal funds|fomc|interest rate|rate decision/i, "Fed-Ð¸Ð¹Ð½ Ñ…Ò¯Ò¯Ð³Ð¸Ð¹Ð½ ÑˆÐ¸Ð¹Ð´Ð²ÑÑ€", "Ð¥Ð°Ð¼Ð³Ð¸Ð¹Ð½ Ñ‡ÑƒÑ…Ð°Ð» Ò¯Ð¹Ð» ÑÐ²Ð´Ð°Ð». Ð¥Ò¯Ò¯ Ð±ÑƒÑƒÑ€Ð°Ñ… â†’ ÐºÑ€Ð¸Ð¿Ñ‚Ð¾ Ð¸Ñ…ÑÐ²Ñ‡Ð»ÑÐ½ Ó©ÑÐ½Ó©, Ó©ÑÓ©Ñ… â†’ ÑƒÐ½Ð°Ð½Ð°. Ð¨Ð¸Ð¹Ð´Ð²ÑÑ€Ð¸Ð¹Ð½ Ð´Ð°Ñ€Ð°Ð°Ñ… Ñ…ÑÐ²Ð»ÑÐ»Ð¸Ð¹Ð½ Ð±Ð°Ð³Ð° Ñ…ÑƒÑ€Ð°Ð» Ñ‡ Ð·Ð°Ñ… Ð·ÑÑÐ»Ð¸Ð¹Ð³ Ñ…Ó©Ð´Ó©Ð»Ð³Ó©Ð´Ó©Ð³."],
-  [/powell|warsh|fed chair|speaks/i, "Fed-Ð¸Ð¹Ð½ ÑƒÐ´Ð¸Ñ€Ð´Ð»Ð°Ð³Ñ‹Ð½ Ð¸Ð»Ñ‚Ð³ÑÐ»", "Fed-Ð¸Ð¹Ð½ Ð´Ð°Ñ€Ð³Ñ‹Ð½ Ñ…ÑÐ»ÑÑÐ½ Ð½ÑÐ³ Ò¯Ð³ Ñ‡ Ð·Ð°Ñ… Ð·ÑÑÐ»Ð¸Ð¹Ð³ Ñ…Ó©Ð´Ó©Ð»Ð³Ó©Ð¶ Ð±Ð¾Ð»Ð´Ð¾Ð³."],
-  [/retail sales/i, "Ð–Ð¸Ð¶Ð¸Ð³Ð»ÑÐ½Ð³Ð¸Ð¹Ð½ Ð±Ð¾Ñ€Ð»ÑƒÑƒÐ»Ð°Ð»Ñ‚", "Ð¥ÑÑ€ÑÐ³Ð»ÑÐ³Ñ‡Ð¸Ð´ Ñ…ÑÑ€ Ð¸Ñ… Ð¼Ó©Ð½Ð³Ó© Ð·Ð°Ñ€Ñ†ÑƒÑƒÐ»Ð¶ Ð±Ð°Ð¹Ð½Ð° Ð²Ñ. Ð­Ð´Ð¸Ð¹Ð½ Ð·Ð°ÑÐ³Ð¸Ð¹Ð½ Ñ…Ò¯Ñ‡Ð¸Ð¹Ð³ Ñ…Ð°Ñ€ÑƒÑƒÐ»Ð½Ð°."],
-  [/gdp/i, "Ð”ÐÐ‘-Ð¸Ð¹ Ó©ÑÓ©Ð»Ñ‚", "Ð­Ð´Ð¸Ð¹Ð½ Ð·Ð°ÑÐ³Ð¸Ð¹Ð½ Ð½Ð¸Ð¹Ñ‚ Ó©ÑÓ©Ð»Ñ‚."],
-  [/ism|pmi/i, "Ð‘Ð¸Ð·Ð½ÐµÑÐ¸Ð¹Ð½ Ð¸Ð´ÑÐ²Ñ…Ð¶Ð¸Ð» (ISM/PMI)", "Ò®Ð¹Ð»Ð´Ð²ÑÑ€, Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ ÑÐ°Ð»Ð±Ð°Ñ€Ñ‹Ð½ Ð¸Ð´ÑÐ²Ñ…Ð¶Ð¸Ð». 50-Ð°Ð°Ñ Ð´ÑÑÑˆ Ð±Ð¾Ð» Ó©ÑÓ©Ð»Ñ‚."],
-  [/jolts/i, "Ð¡ÑƒÐ» Ð°Ð¶Ð»Ñ‹Ð½ Ð±Ð°Ð¹Ñ€ (JOLTS)", "Ð¥Ó©Ð´Ó©Ð»Ð¼Ó©Ñ€Ð¸Ð¹Ð½ Ð·Ð°Ñ… Ð·ÑÑÐ» Ñ…ÑÑ€ Â«Ñ…Ð°Ð»ÑƒÑƒÐ½Â» Ð±Ð°Ð¹Ð³Ð°Ð°Ð³ Ñ…Ð°Ñ€ÑƒÑƒÐ»Ð½Ð°."],
-  [/consumer sentiment|consumer confidence/i, "Ð¥ÑÑ€ÑÐ³Ð»ÑÐ³Ñ‡Ð¸Ð¹Ð½ Ð¸Ñ‚Ð³ÑÐ»", "Ð¥Ò¯Ð¼Ò¯Ò¯Ñ ÑÐ´Ð¸Ð¹Ð½ Ð·Ð°ÑÐ³Ð¸Ð¹Ð½ Ñ‚Ð°Ð»Ð°Ð°Ñ€ Ñ…ÑÑ€ Ó©Ó©Ð´Ñ€Ó©Ð³ Ð±Ð°Ð¹Ð½Ð° Ð²Ñ."],
-  [/durable goods/i, "Ð£Ð´Ð°Ð°Ð½ ÑÐ´ÑÐ»Ð³ÑÑÑ‚ÑÐ¹ Ð±Ð°Ñ€Ð°Ð°", "ÐšÐ¾Ð¼Ð¿Ð°Ð½Ð¸ÑƒÐ´Ñ‹Ð½ Ñ…Ó©Ñ€Ó©Ð½Ð³Ó© Ð¾Ñ€ÑƒÑƒÐ»Ð°Ð»Ñ‚Ñ‹Ð½ Ð´Ð¾Ñ…Ð¸Ð¾."],
+  [/core pce|pce price/i, "PCE инфляци", "Fed-ийн хамгийн их анхаардаг инфляцийн үзүүлэлт. Таамгаас өндөр гарвал хүү удаан хугацаанд өндөр байх магадлал нэмэгдэж, крипто ихэвчлэн унадаг."],
+  [/cpi/i, "Инфляци (CPI)", "Хэрэглээний барааны үнэ хэр өссөнийг харуулна. Таамгаас өндөр → Fed хүүг өндөр барина → крипто ихэвчлэн унадаг. Бага → эсрэгээрээ."],
+  [/ppi/i, "Үйлдвэрлэгчийн үнэ (PPI)", "Үйлдвэрлэгчдийн зардлын инфляци. CPI-ийн урьдчилсан дохио болдог."],
+  [/non-farm|nfp/i, "Ажлын байрны тайлан (NFP)", "АНУ-д нэг сард нэмэгдсэн ажлын байр. Сар бүрийн хамгийн чухал мэдээний нэг. Хэт хүчтэй → хүү өндөр хэвээр → крипто дарамттай."],
+  [/unemployment claims/i, "Ажилгүйдлийн тэтгэмж", "7 хоног бүр гардаг. Огцом өсвөл эдийн засаг суларч байна гэсэн дохио."],
+  [/unemployment rate/i, "Ажилгүйдлийн түвшин", "Ажилгүй хүмүүсийн хувь. Fed-ийн шийдвэрт нөлөөлдөг."],
+  [/minutes/i, "Fed-ийн хурлын тэмдэглэл", "Өмнөх хурлын нарийвчилсан тэмдэглэл. Цаашид хүүг хэрхэн өөрчлөх талаарх сэжүүр өгдөг."],
+  [/federal funds|fomc|interest rate|rate decision/i, "Fed-ийн хүүгийн шийдвэр", "Хамгийн чухал үйл явдал. Хүү буурах → крипто ихэвчлэн өснө, өсөх → унана. Шийдвэрийн дараах хэвлэлийн бага хурал ч зах зээлийг хөдөлгөдөг."],
+  [/powell|warsh|fed chair|speaks/i, "Fed-ийн удирдлагын илтгэл", "Fed-ийн даргын хэлсэн нэг үг ч зах зээлийг хөдөлгөж болдог."],
+  [/retail sales/i, "Жижиглэнгийн борлуулалт", "Хэрэглэгчид хэр их мөнгө зарцуулж байна вэ. Эдийн засгийн хүчийг харуулна."],
+  [/gdp/i, "ДНБ-ий өсөлт", "Эдийн засгийн нийт өсөлт."],
+  [/ism|pmi/i, "Бизнесийн идэвхжил (ISM/PMI)", "Үйлдвэр, үйлчилгээний салбарын идэвхжил. 50-аас дээш бол өсөлт."],
+  [/jolts/i, "Сул ажлын байр (JOLTS)", "Хөдөлмөрийн зах зээл хэр «халуун» байгааг харуулна."],
+  [/consumer sentiment|consumer confidence/i, "Хэрэглэгчийн итгэл", "Хүмүүс эдийн засгийн талаар хэр өөдрөг байна вэ."],
+  [/durable goods/i, "Удаан эдэлгээтэй бараа", "Компаниудын хөрөнгө оруулалтын дохио."],
 ];
 function eventInfo(title) {
   for (const [re, name, text] of EVENT_INFO) if (re.test(title)) return {name, text};
-  return {name: "Ð­Ð´Ð¸Ð¹Ð½ Ð·Ð°ÑÐ³Ð¸Ð¹Ð½ Ð¼ÑÐ´ÑÑ", text: "Ð—Ð°Ñ… Ð·ÑÑÐ»Ð¸Ð¹Ð³ Ð¾Ð³Ñ†Ð¾Ð¼ Ñ…Ó©Ð´Ó©Ð»Ð³Ó©Ð¶ Ð±Ð¾Ð»Ð¾Ñ… ÐÐÐ£-Ñ‹Ð½ Ñ‡ÑƒÑ…Ð°Ð» Ð¼ÑÐ´ÑÑ."};
+  return {name: "Эдийн засгийн мэдээ", text: "Зах зээлийг огцом хөдөлгөж болох АНУ-ын чухал мэдээ."};
 }
 const hm = (ms) => new Date(ms).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
 const dayName = (ms) => new Date(ms).toLocaleDateString([], {weekday: "short", month: "numeric", day: "numeric"});
 function countdown(ts, afterMin) {
   const d = ts - Date.now();
-  if (d < 0) return -d < afterMin * 60000 ? ["â¸ Ð¾Ð´Ð¾Ð¾", "warn"] : ["Ð±Ð¾Ð»ÑÐ¾Ð½", ""];
+  if (d < 0) return -d < afterMin * 60000 ? ["⏸ одоо", "warn"] : ["болсон", ""];
   const days = Math.floor(d / 864e5), h = Math.floor(d % 864e5 / 36e5), m = Math.floor(d % 36e5 / 6e4);
-  const txt = days ? `${days}Ó© ${h}Ñ†` : h ? `${h}Ñ† ${m}Ð¼` : `${m}Ð¼`;
+  const txt = days ? `${days}ө ${h}ц` : h ? `${h}ц ${m}м` : `${m}м`;
   return [txt, d < 36e5 * 3 ? "warn" : ""];
 }
 function renderEvents(d) {
   const bo = d.blackout || {before_min: 60, after_min: 60};
   $("bo-before").textContent = bo.before_min; $("bo-after").textContent = bo.after_min;
-  if (!d.events.length) return '<div class="empty">ÐžÐ¹Ñ€Ñ‹Ð½ 7 Ñ…Ð¾Ð½Ð¾Ð³Ñ‚ Ñ‡ÑƒÑ…Ð°Ð» Ò¯Ð¹Ð» ÑÐ²Ð´Ð°Ð» Ð°Ð»Ð³Ð°</div>';
+  if (!d.events.length) return '<div class="empty">Ойрын 7 хоногт чухал үйл явдал алга</div>';
   const groups = [], byKey = {};
   for (const e of d.events) {   // CPI y/y, CPI m/m, Core CPI... at the same minute = one row
     const info = eventInfo(e.title), k = e.ts + "|" + info.name;
@@ -221,142 +221,142 @@ function renderEvents(d) {
   }
   const rows = groups.map((g, i) => {
     const key = "ev" + i, [cd, c] = countdown(g.ts, bo.after_min);
-    DETAIL[key] = `<h3>ðŸ‡ºðŸ‡¸ ${g.info.name}</h3>
-      <div class="sub">${dayName(g.ts)} Â· ${hm(g.ts)} Â· Ñ‚Ð°Ð½Ñ‹ Ñ†Ð°Ð³Ð°Ð°Ñ€</div>
+    DETAIL[key] = `<h3>🇺🇸 ${g.info.name}</h3>
+      <div class="sub">${dayName(g.ts)} · ${hm(g.ts)} · таны цагаар</div>
       <p>${g.info.text}</p>
-      <table><thead><tr><th>Ò®Ð·Ò¯Ò¯Ð»ÑÐ»Ñ‚</th><th>Ð¢Ð°Ð°Ð¼Ð°Ð³</th><th>Ó¨Ð¼Ð½Ó©Ñ…</th></tr></thead><tbody>
-        ${g.items.map(e => `<tr><td>${esc(e.title)}</td><td>${esc(e.forecast || "â€“")}</td><td>${esc(e.previous || "â€“")}</td></tr>`).join("")}
+      <table><thead><tr><th>Үзүүлэлт</th><th>Таамаг</th><th>Өмнөх</th></tr></thead><tbody>
+        ${g.items.map(e => `<tr><td>${esc(e.title)}</td><td>${esc(e.forecast || "–")}</td><td>${esc(e.previous || "–")}</td></tr>`).join("")}
       </tbody></table>
-      <p>â¸ Ð‘Ð¾Ñ‚ <b>${hm(g.ts - bo.before_min * 6e4)} â€“ ${hm(g.ts + bo.after_min * 6e4)}</b> Ñ…Ð¾Ð¾Ñ€Ð¾Ð½Ð´ ÑˆÐ¸Ð½Ñ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð° Ð½ÑÑÑ…Ð³Ò¯Ð¹. ÐÑÑÐ»Ñ‚Ñ‚ÑÐ¹ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð°Ð½ÑƒÑƒÐ´ stop/TP-ÑÑÑ€ÑÑ Ñ…Ð°Ð¼Ð³Ð°Ð°Ð»Ð°Ð³Ð´ÑÐ°Ð½ Ñ…ÑÐ²ÑÑÑ€.</p>
-      <a class="btn" href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">ForexFactory ÐºÐ°Ð»ÐµÐ½Ð´Ð°Ñ€ÑŒ â†—</a>`;
+      <p>⏸ Бот <b>${hm(g.ts - bo.before_min * 6e4)} – ${hm(g.ts + bo.after_min * 6e4)}</b> хооронд шинэ арилжаа нээхгүй. Нээлттэй арилжаанууд stop/TP-ээрээ хамгаалагдсан хэвээр.</p>
+      <a class="btn" href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">ForexFactory календарь ↗</a>`;
     const names = g.items.map(e => e.title);
     return `<tr class="click" data-detail="${key}">
       <td><div>${dayName(g.ts)}</div><div class="sub">${hm(g.ts)}</div></td>
-      <td class="wrap2"><div class="title">${g.info.name}${names.length > 1 ? ` <span class="sub">Ã—${names.length}</span>` : ""}</div>
-        <div class="sub">${esc(names.slice(0, 2).join(", "))}${names.length > 2 ? "â€¦" : ""}</div></td>
+      <td class="wrap2"><div class="title">${g.info.name}${names.length > 1 ? ` <span class="sub">×${names.length}</span>` : ""}</div>
+        <div class="sub">${esc(names.slice(0, 2).join(", "))}${names.length > 2 ? "…" : ""}</div></td>
       <td><span class="badge ${c}">${cd}</span></td></tr>`;
   }).join("");
-  return `<table><thead><tr><th>Ð¥ÑÐ·ÑÑ</th><th>Ò®Ð¹Ð» ÑÐ²Ð´Ð°Ð»</th><th>Ò®Ð»Ð´ÑÑÐ½</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="sub" style="margin-top:6px">ÐœÓ©Ñ€ Ð´ÑÑÑ€ Ð´Ð°Ñ€Ð¶ Ð´ÑÐ»Ð³ÑÑ€ÑÐ½Ð³Ò¯Ð¹Ð³ Ñ…Ð°Ñ€Ð½Ð° ÑƒÑƒ</div>`;
+  return `<table><thead><tr><th>Хэзээ</th><th>Үйл явдал</th><th>Үлдсэн</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="sub" style="margin-top:6px">Мөр дээр дарж дэлгэрэнгүйг харна уу</div>`;
 }
 
 // ---- shadow test ----
 function shadowStatus(s, r) {
   const f = s.forward, l = s.live_forward;
-  if (!f || !l) return ["â³ Ð¥Ò¯Ð»ÑÑÐ¶ Ð±Ð°Ð¹Ð½Ð°", ""];
-  if (s.days >= r.min_days && f.trades >= r.min_trades && f.score > l.score + r.margin && f.return > 0) return ["ðŸ† Ð‘ÑÐ»ÑÐ½", "up"];
-  if (!f.trades && !l.trades) return ["â³ ÐÑ€Ð¸Ð»Ð¶Ð°Ð° Ð°Ð»Ð³Ð°", ""];
-  return f.return >= l.return ? ["ðŸŸ¢ Ð¢ÑÑ€Ð³Ò¯Ò¯Ð»Ð¶ Ð±Ð°Ð¹Ð½Ð°", "up"] : ["ðŸ”´ Ð¥Ð¾Ñ†Ð¾Ñ€Ñ‡ Ð±Ð°Ð¹Ð½Ð°", "down"];
+  if (!f || !l) return ["⏳ Хүлээж байна", ""];
+  if (s.days >= r.min_days && f.trades >= r.min_trades && f.score > l.score + r.margin && f.return > 0) return ["🏆 Бэлэн", "up"];
+  if (!f.trades && !l.trades) return ["⏳ Арилжаа алга", ""];
+  return f.return >= l.return ? ["🟢 Тэргүүлж байна", "up"] : ["🔴 Хоцорч байна", "down"];
 }
 function renderShadows(d) {
   const r = d.shadow_rules || {min_days: 10, min_trades: 6, margin: 0.3, max_age_days: 45};
-  $("sh-rules").textContent = `${r.min_days}+ Ñ…Ð¾Ð½Ð¾Ð³ Ñ‚ÑƒÑ€ÑˆÐ¸Ð³Ð´ÑÐ°Ð½, ${r.min_trades}+ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð° Ñ…Ð¸Ð¹ÑÑÐ½, Ð¾Ð½Ð¾Ð¾ Ð½ÑŒ Ð¾Ð´Ð¾Ð¾Ð³Ð¸Ð¹Ð½ Ñ‚Ð¾Ñ…Ð¸Ñ€Ð³Ð¾Ð¾Ð½Ð¾Ð¾Ñ ${r.margin}-Ð°Ð°Ñ€ Ð¸Ð»Ò¯Ò¯, Ó©Ð³Ó©Ó©Ð¶ Ð½ÑŒ ÑÐµÑ€ÑÐ³ Ð±Ð°Ð¹Ñ….`;
+  $("sh-rules").textContent = `${r.min_days}+ хоног туршигдсан, ${r.min_trades}+ арилжаа хийсэн, оноо нь одоогийн тохиргооноос ${r.margin}-аар илүү, өгөөж нь эерэг байх.`;
   $("sh-max").textContent = r.max_age_days;
-  if (!d.shadows.length) return '<div class="empty">ÐžÐ´Ð¾Ð¾Ð³Ð¾Ð¾Ñ€ shadow Ð°Ð»Ð³Ð°</div>';
+  if (!d.shadows.length) return '<div class="empty">Одоогоор shadow алга</div>';
   const rows = d.shadows.map(s => {
     const f = s.forward, l = s.live_forward, v = s.backtest?.vault || {}, key = "sh" + s.id;
     const [st, c] = shadowStatus(s, r), prog = Math.min(100, s.days / r.min_days * 100);
-    const score = (x) => x.trades >= 8 ? fmt(x.score) : "â€“ (8+ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð° Ñ…ÑÑ€ÑÐ³Ñ‚ÑÐ¹)";
-    DETAIL[key] = `<h3>ðŸ§ª Shadow #${esc(s.id)} <span class="badge ${c}">${st}</span></h3>
-      <div class="sub">Ð­Ñ…ÑÐ»ÑÑÐ½ ${time(s.created)}</div>
-      <div class="sub" style="margin-top:10px">Ð¢ÑƒÑ€ÑˆÐ¸Ð»Ñ‚Ñ‹Ð½ Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°: ${fmt(s.days, 1)} / ${r.min_days} Ñ…Ð¾Ð½Ð¾Ð³</div>
+    const score = (x) => x.trades >= 8 ? fmt(x.score) : "– (8+ арилжаа хэрэгтэй)";
+    DETAIL[key] = `<h3>🧪 Shadow #${esc(s.id)} <span class="badge ${c}">${st}</span></h3>
+      <div class="sub">Эхэлсэн ${time(s.created)}</div>
+      <div class="sub" style="margin-top:10px">Туршилтын хугацаа: ${fmt(s.days, 1)} / ${r.min_days} хоног</div>
       <div class="bar"><span style="width:${prog}%"></span></div>
-      ${f && l ? `<table><thead><tr><th></th><th>Shadow</th><th>ÐžÐ´Ð¾Ð¾Ð³Ð¸Ð¹Ð½ Ñ‚Ð¾Ñ…Ð¸Ñ€Ð³Ð¾Ð¾</th></tr></thead><tbody>
-        <tr><td>ÐÑ€Ð¸Ð»Ð¶Ð°Ð°</td><td>${f.trades} / ${r.min_trades}+</td><td>${l.trades}</td></tr>
-        <tr><td>Ó¨Ð³Ó©Ó©Ð¶</td><td class="${cls(f.return)}">${pct(f.return)}</td><td class="${cls(l.return)}">${pct(l.return)}</td></tr>
-        <tr><td>Ð”ÑƒÐ½Ð´Ð°Ð¶</td><td class="${cls(f.avg_r)}">${fmt(f.avg_r)}R</td><td class="${cls(l.avg_r)}">${fmt(l.avg_r)}R</td></tr>
-        <tr><td>ÐžÐ½Ð¾Ð¾</td><td>${score(f)}</td><td>${score(l)}</td></tr></tbody></table>
-        <p class="sub">Ð¥Ð¾Ñ‘ÑƒÐ»Ð°Ð° ÑÐ³ Ð¸Ð¶Ð¸Ð» Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°Ð½Ñ‹ ÑˆÐ¸Ð½Ñ Ð»Ð°Ð°Ð½ Ð´ÑÑÑ€ Ñ‚Ð¾Ð¾Ñ†Ð¾Ð³Ð´ÑÐ¾Ð½.</p>`
-      : '<p class="muted">Ð˜Ñ€ÑÑÐ´Ò¯Ð¹Ð½ Ð´Ò¯Ð½ Ó©Ð´Ó©Ñ€Ñ‚ Ð½ÑÐ³ ÑƒÐ´Ð°Ð° (ÑÐ°Ð¹Ð¶Ñ€ÑƒÑƒÐ»Ð°Ð»Ñ‚Ñ‹Ð½ Ò¯ÐµÑÑ€) Ñ‚Ð¾Ð¾Ñ†Ð¾Ð³Ð´Ð¾Ð½Ð¾.</p>'}
-      <p class="sub">Ð¢Ò¯Ò¯Ñ…ÑÐ½ ÑˆÐ°Ð»Ð³Ð°Ð»Ñ‚ (vault): Ó©Ð³Ó©Ó©Ð¶ ${pct(v.return)}, Ð¾Ð½Ð¾Ð¾ ${fmt(v.score)}</p>`;
+      ${f && l ? `<table><thead><tr><th></th><th>Shadow</th><th>Одоогийн тохиргоо</th></tr></thead><tbody>
+        <tr><td>Арилжаа</td><td>${f.trades} / ${r.min_trades}+</td><td>${l.trades}</td></tr>
+        <tr><td>Өгөөж</td><td class="${cls(f.return)}">${pct(f.return)}</td><td class="${cls(l.return)}">${pct(l.return)}</td></tr>
+        <tr><td>Дундаж</td><td class="${cls(f.avg_r)}">${fmt(f.avg_r)}R</td><td class="${cls(l.avg_r)}">${fmt(l.avg_r)}R</td></tr>
+        <tr><td>Оноо</td><td>${score(f)}</td><td>${score(l)}</td></tr></tbody></table>
+        <p class="sub">Хоёулаа яг ижил хугацааны шинэ лаан дээр тооцогдсон.</p>`
+      : '<p class="muted">Ирээдүйн дүн өдөрт нэг удаа (сайжруулалтын үеэр) тооцогдоно.</p>'}
+      <p class="sub">Түүхэн шалгалт (vault): өгөөж ${pct(v.return)}, оноо ${fmt(v.score)}</p>`;
     return `<tr class="click" data-detail="${key}">
       <td><div class="title">#${esc(s.id)}</div><div class="bar mini"><span style="width:${prog}%"></span></div>
-        <div class="sub">${fmt(s.days, 1)}/${r.min_days} Ñ…Ð¾Ð½Ð¾Ð³</div></td>
+        <div class="sub">${fmt(s.days, 1)}/${r.min_days} хоног</div></td>
       <td><span class="${cls(f?.return)}">${pct(f?.return)}</span> <span class="sub">vs ${pct(l?.return)}</span></td>
       <td><span class="badge ${c}">${st}</span></td></tr>`;
   }).join("");
-  return `<table><thead><tr><th>Shadow</th><th>Ó¨Ð³Ó©Ó©Ð¶ (vs Ð¾Ð´Ð¾Ð¾Ð³Ð¸Ð¹Ð½)</th><th>Ð¢Ó©Ð»Ó©Ð²</th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<table><thead><tr><th>Shadow</th><th>Өгөөж (vs одоогийн)</th><th>Төлөв</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 // ---- strategy library ----
-const FEAT = {close: "Ò®Ð½Ñ", open: "ÐÑÑÐ»Ñ‚Ð¸Ð¹Ð½ Ò¯Ð½Ñ", high: "Ð”ÑÑÐ´ Ò¯Ð½Ñ", low: "Ð”Ð¾Ð¾Ð´ Ò¯Ð½Ñ", volume: "ÐÑ€Ð¸Ð»Ð¶Ð°Ð°Ð½Ñ‹ Ñ…ÑÐ¼Ð¶ÑÑ",
-  macd: "MACD", macd_signal: "MACD-Ð¸Ð¹Ð½ signal ÑˆÑƒÐ³Ð°Ð¼", macd_hist: "MACD histogram", funding: "Funding rate", fng: "Fear & Greed"};
-const FEAT_N = {ema: n => `EMA(${n}) Ð´ÑƒÐ½Ð´Ð°Ð¶`, sma: n => `${n} Ò¯ÐµÐ¸Ð¹Ð½ ÑÐ½Ð³Ð¸Ð¹Ð½ Ð´ÑƒÐ½Ð´Ð°Ð¶`, rsi: n => `RSI(${n})`, atr: n => `ATR(${n})`,
-  bb_upper: n => `Bollinger-Ð¸Ð¹Ð½ Ð´ÑÑÐ´ Ð·ÑƒÑ€Ð²Ð°Ñ(${n})`, bb_lower: n => `Bollinger-Ð¸Ð¹Ð½ Ð´Ð¾Ð¾Ð´ Ð·ÑƒÑ€Ð²Ð°Ñ(${n})`, bb_mid: n => `Bollinger-Ð¸Ð¹Ð½ Ð´ÑƒÐ½Ð´ ÑˆÑƒÐ³Ð°Ð¼(${n})`,
-  highest: n => `ÑÒ¯Ò¯Ð»Ð¸Ð¹Ð½ ${n} Ñ†Ð°Ð³Ð¸Ð¹Ð½ Ð´ÑÑÐ´ Ñ†ÑÐ³`, lowest: n => `ÑÒ¯Ò¯Ð»Ð¸Ð¹Ð½ ${n} Ñ†Ð°Ð³Ð¸Ð¹Ð½ Ð´Ð¾Ð¾Ð´ Ñ†ÑÐ³`,
-  volume_sma: n => `${n} Ñ†Ð°Ð³Ð¸Ð¹Ð½ Ð´ÑƒÐ½Ð´Ð°Ð¶ Ñ…ÑÐ¼Ð¶ÑÑ`, roc: n => `${n} Ñ†Ð°Ð³Ð¸Ð¹Ð½ Ó©Ó©Ñ€Ñ‡Ð»Ó©Ð»Ñ‚`};
-const OP = {">": "-Ð°Ð°Ñ Ð¸Ñ…", "<": "-Ð°Ð°Ñ Ð±Ð°Ð³Ð°", crosses_above: "-Ð¸Ð¹Ð³ Ð´Ð¾Ð¾Ñ€Ð¾Ð¾Ñ Ð´ÑÑÑˆ Ð¾Ð³Ñ‚Ð¾Ð»ÑÐ¾Ð½", crosses_below: "-Ð¸Ð¹Ð³ Ð´ÑÑÑ€ÑÑÑ Ð´Ð¾Ð¾Ñˆ Ð¾Ð³Ñ‚Ð¾Ð»ÑÐ¾Ð½"};
+const FEAT = {close: "Үнэ", open: "Нээлтийн үнэ", high: "Дээд үнэ", low: "Доод үнэ", volume: "Арилжааны хэмжээ",
+  macd: "MACD", macd_signal: "MACD-ийн signal шугам", macd_hist: "MACD histogram", funding: "Funding rate", fng: "Fear & Greed"};
+const FEAT_N = {ema: n => `EMA(${n}) дундаж`, sma: n => `${n} үеийн энгийн дундаж`, rsi: n => `RSI(${n})`, atr: n => `ATR(${n})`,
+  bb_upper: n => `Bollinger-ийн дээд зурвас(${n})`, bb_lower: n => `Bollinger-ийн доод зурвас(${n})`, bb_mid: n => `Bollinger-ийн дунд шугам(${n})`,
+  highest: n => `сүүлийн ${n} цагийн дээд цэг`, lowest: n => `сүүлийн ${n} цагийн доод цэг`,
+  volume_sma: n => `${n} цагийн дундаж хэмжээ`, roc: n => `${n} цагийн өөрчлөлт`};
+const OP = {">": "-аас их", "<": "-аас бага", crosses_above: "-ийг доороос дээш огтолсон", crosses_below: "-ийг дээрээс доош огтолсон"};
 function featName(f) {
   f = String(f).trim(); if (FEAT[f]) return FEAT[f];
   const m = f.match(/^(\w+):(\d+)$/); return m && FEAT_N[m[1]] ? FEAT_N[m[1]](m[2]) : f;
 }
-const ruleText = (c) => `${featName(c.left)} ${c.right_mult && c.right_mult !== 1 ? `${featName(c.right)} Ã— ${c.right_mult}` : featName(c.right)}${OP[c.op] || c.op}`;
+const ruleText = (c) => `${featName(c.left)} ${c.right_mult && c.right_mult !== 1 ? `${featName(c.right)} × ${c.right_mult}` : featName(c.right)}${OP[c.op] || c.op}`;
 const SEED_INFO = {
-  "Golden / death cross": "50 Ò¯ÐµÐ¸Ð¹Ð½ Ð´ÑƒÐ½Ð´Ð°Ð¶ 200 Ò¯ÐµÐ¸Ð¹Ð½ Ð´ÑƒÐ½Ð´Ð¶Ð¸Ð¹Ð³ Ð´ÑÑÑˆ Ð¾Ð³Ñ‚Ð»Ð¾Ñ…Ð¾Ð´ Ñ…ÑƒÐ´Ð°Ð»Ð´Ð°Ð½ Ð°Ð²Ð°Ñ… (golden cross), Ð´Ð¾Ð¾Ñˆ Ð¾Ð³Ñ‚Ð»Ð¾Ñ…Ð¾Ð´ Ð·Ð°Ñ€Ð°Ñ… (death cross). Trend Ð´Ð°Ð³Ð°Ñ… Ñ…Ð°Ð¼Ð³Ð¸Ð¹Ð½ Ð°Ð»Ð´Ð°Ñ€Ñ‚Ð°Ð¹ ÑÑ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸.",
-  "RSI dip with the trend": "Ó¨ÑÓ©Ñ… trend-Ð¸Ð¹Ð½ Ò¯ÐµÐ´ RSI 30-Ð°Ð°Ñ Ð´Ð¾Ð¾Ñˆ ÑƒÐ½Ð°Ñ…Ð°Ð´ (Ñ‚Ò¯Ñ€ Ñ…ÑÑ‚ Ð·Ð°Ñ€Ð°Ð³Ð´ÑÐ°Ð½) Ñ…ÑƒÐ´Ð°Ð»Ð´Ð°Ð½ Ð°Ð²Ð½Ð°. Ð£Ð½Ð°Ñ… trend-Ð¸Ð¹Ð½ Ò¯ÐµÐ´ RSI 70-Ð°Ð°Ñ Ð´ÑÑÑˆ Ð³Ð°Ñ€Ð°Ñ…Ð°Ð´ Ð·Ð°Ñ€Ð½Ð°.",
-  "Bollinger breakout": "Ò®Ð½Ñ Bollinger Ð·ÑƒÑ€Ð²Ð°ÑÑ‹Ð½ Ñ…ÑÐ·Ð³Ð°Ð°Ñ€Ñ‹Ð³ Ð´Ð°Ð²Ð°Ñ…Ð°Ð´ Ñ…Ò¯Ñ‡Ñ‚ÑÐ¹ Ñ…Ó©Ð´Ó©Ð»Ð³Ó©Ó©Ð½ ÑÑ…ÑÐ»Ð¶ Ð±Ð°Ð¹Ð½Ð° Ð³ÑÐ¶ Ò¯Ð·ÑÑÐ´ Ð´Ð°Ð³Ð°Ð½Ð°.",
-  "Bollinger mean reversion": "Ò®Ð½Ñ Ð·ÑƒÑ€Ð²Ð°ÑÐ°Ð°Ñ Ñ…ÑÑ‚ Ð³Ð°Ñ€Ð°Ñ…Ð°Ð´ Ð´ÑƒÐ½Ð´Ð°Ð¶ Ñ€ÑƒÑƒÐ³Ð°Ð° Ð±ÑƒÑ†Ð½Ð° Ð³ÑÐ¶ Ð±Ð¾Ð¾Ñ†Ð¾Ð¾ Ñ‚Ð°Ð²Ð¸Ð½Ð°. Breakout-Ð¸Ð¹Ð½ ÑÑÑ€ÑÐ³ ÑÐ°Ð½Ð°Ð°.",
-  "Turtle / Donchian 55": "1980-Ð°Ð°Ð´ Ð¾Ð½Ñ‹ Ð°Ð»Ð´Ð°Ñ€Ñ‚ \"Turtle\" Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð°Ñ‡Ð´Ñ‹Ð½ Ð°Ñ€Ð³Ð°: 55 Ò¯ÐµÐ¸Ð¹Ð½ Ð´ÑÑÐ´ Ñ†ÑÐ³Ð¸Ð¹Ð³ ÑÐ²Ð´ÑÑ…ÑÐ´ Ñ…ÑƒÐ´Ð°Ð»Ð´Ð°Ð½ Ð°Ð²Ñ‡, Ð´Ð¾Ð¾Ð´ Ñ†ÑÐ³Ð¸Ð¹Ð³ ÑÐ²Ð´ÑÑ…ÑÐ´ Ð·Ð°Ñ€Ð½Ð°.",
-  "MACD cross with trend": "MACD ÑˆÑƒÐ³Ð°Ð¼ signal ÑˆÑƒÐ³Ð°Ð¼Ñ‹Ð³ Ð¾Ð³Ñ‚Ð»Ð¾Ñ…Ð¾Ð´ ÑƒÑ€Ñ‚ Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°Ð½Ñ‹ trend-Ð¸Ð¹Ð½ Ñ‡Ð¸Ð³Ð»ÑÐ»Ð´ Ð¾Ñ€Ð½Ð¾.",
-  "Volume breakout": "Ò®Ð½Ñ 24 Ñ†Ð°Ð³Ð¸Ð¹Ð½ Ð´ÑÑÐ´/Ð´Ð¾Ð¾Ð´ Ñ†ÑÐ³Ð¸Ð¹Ð³ ÑÐ²Ð´ÑÑ…Ð´ÑÑ Ñ…ÑÐ¼Ð¶ÑÑ Ð½ÑŒ Ð´ÑƒÐ½Ð´Ð¶Ð°Ð°ÑÐ°Ð° 2 Ð´Ð°Ñ…Ð¸Ð½ Ð¸Ñ… Ð±Ð°Ð¹Ð²Ð°Ð» Ð¶Ð¸Ð½Ñ…ÑÐ½Ñ breakout Ð³ÑÐ¶ Ò¯Ð·Ð½Ñ.",
-  "Funding squeeze (contrarian)": "Funding Ñ…ÑÑ‚ Ó©Ð½Ð´Ó©Ñ€ (Ñ…ÑÑ‚ Ð¾Ð»Ð¾Ð½ Ñ…Ò¯Ð½ long) Ò¯ÐµÐ´ RSI Ó©Ð½Ð´Ó©Ñ€ Ð±Ð°Ð¹Ð²Ð°Ð» short Ñ…Ð¸Ð¹Ð½Ñ. Ð­ÑÑ€ÑÐ³ÑÑÑ€ÑÑ Ñ‡ Ð¼Ó©Ð½ Ð°Ð´Ð¸Ð». ÐžÐ»Ð¾Ð½Ñ…Ñ‹Ð½ ÑÑÑ€ÑÐ³ Ð°Ñ€Ð³Ð°.",
-  "Fear & Greed extremes": "Ð¥Ò¯Ð¼Ò¯Ò¯Ñ Ñ…ÑÑ‚ Ð°Ð¹ÑÐ°Ð½ (<20) Ò¯ÐµÐ´ Ñ…ÑƒÐ´Ð°Ð»Ð´Ð°Ð½ Ð°Ð²Ñ‡, Ñ…ÑÑ‚ ÑˆÑƒÐ½Ð°ÑÐ°Ð½ (>80) Ò¯ÐµÐ´ Ð·Ð°Ñ€Ð½Ð°. \"Ð‘ÑƒÑÐ°Ð´ ÑˆÑƒÐ½Ð°Ñ…Ð°Ð´ Ð°Ð¹\" Ð³ÑÑÑÐ½ Ð·Ð°Ñ€Ñ‡Ð¸Ð¼.",
-  "EMA20 pullback in trend": "Ð£Ñ€Ñ‚ trend-Ð¸Ð¹Ð½ Ñ‡Ð¸Ð³Ð»ÑÐ»Ð´ Ò¯Ð½Ñ 20 Ò¯ÐµÐ¸Ð¹Ð½ Ð´ÑƒÐ½Ð´Ð°Ð¶ Ñ€ÑƒÑƒ Ñ‚Ò¯Ñ€ Ð±ÑƒÑ†Ð°Ð°Ð´ Ð´Ð°Ñ…Ð¸Ð½ ÑÑÑ€Ð³ÑÑ…ÑÐ´ Ð¾Ñ€Ð½Ð¾.",
+  "Golden / death cross": "50 үеийн дундаж 200 үеийн дунджийг дээш огтлоход худалдан авах (golden cross), доош огтлоход зарах (death cross). Trend дагах хамгийн алдартай стратеги.",
+  "RSI dip with the trend": "Өсөх trend-ийн үед RSI 30-аас доош унахад (түр хэт зарагдсан) худалдан авна. Унах trend-ийн үед RSI 70-аас дээш гарахад зарна.",
+  "Bollinger breakout": "Үнэ Bollinger зурвасын хязгаарыг давахад хүчтэй хөдөлгөөн эхэлж байна гэж үзээд дагана.",
+  "Bollinger mean reversion": "Үнэ зурвасаас хэт гарахад дундаж руугаа буцна гэж бооцоо тавина. Breakout-ийн эсрэг санаа.",
+  "Turtle / Donchian 55": "1980-аад оны алдарт \"Turtle\" арилжаачдын арга: 55 үеийн дээд цэгийг эвдэхэд худалдан авч, доод цэгийг эвдэхэд зарна.",
+  "MACD cross with trend": "MACD шугам signal шугамыг огтлоход урт хугацааны trend-ийн чиглэлд орно.",
+  "Volume breakout": "Үнэ 24 цагийн дээд/доод цэгийг эвдэхдээ хэмжээ нь дунджаасаа 2 дахин их байвал жинхэнэ breakout гэж үзнэ.",
+  "Funding squeeze (contrarian)": "Funding хэт өндөр (хэт олон хүн long) үед RSI өндөр байвал short хийнэ. Эсрэгээрээ ч мөн адил. Олонхын эсрэг арга.",
+  "Fear & Greed extremes": "Хүмүүс хэт айсан (<20) үед худалдан авч, хэт шунасан (>80) үед зарна. \"Бусад шунахад ай\" гэсэн зарчим.",
+  "EMA20 pullback in trend": "Урт trend-ийн чиглэлд үнэ 20 үеийн дундаж руу түр буцаад дахин сэргэхэд орно.",
 };
 function verdict(s) {
   const wf = s.stats?.walk_forward, v = s.stats?.vault;
-  if (!wf) return "Ð¨Ð°Ð»Ð³Ð°Ð³Ð´Ð°Ð°Ð³Ò¯Ð¹ Ð±Ð°Ð¹Ð½Ð°.";
-  if (s.status === "approved") return "âœ… Ð‘Ò¯Ñ… ÑˆÐ°Ð»Ð³Ð°Ð»Ñ‚Ñ‹Ð³ Ð´Ð°Ð²ÑÐ°Ð½ Ñ‚ÑƒÐ» Ð±Ð¾Ñ‚Ñ‹Ð½ ÑˆÐ¸Ð¹Ð´Ð²ÑÑ€Ñ‚ ÑÐ°Ð½Ð°Ð» Ó©Ð³Ñ‡ Ð±Ð°Ð¹Ð½Ð°.";
+  if (!wf) return "Шалгагдаагүй байна.";
+  if (s.status === "approved") return "✅ Бүх шалгалтыг давсан тул ботын шийдвэрт санал өгч байна.";
   const why = [];
-  if (wf.positive_folds < 3) why.push(`4 Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°Ð½Ñ‹ 3-Ñ‚ Ð½ÑŒ Ð°ÑˆÐ¸Ð³Ñ‚Ð°Ð¹ Ð±Ð°Ð¹Ñ… Ñ‘ÑÑ‚Ð¾Ð¹, ${wf.positive_folds}-Ñ‚ Ð½ÑŒ Ð» Ð°ÑˆÐ¸Ð³Ñ‚Ð°Ð¹ Ð±Ð°Ð¹ÑÐ°Ð½`);
-  if (!(v?.return > 0)) why.push("Ñ…Ð°Ð¼Ð³Ð¸Ð¹Ð½ ÑÒ¯Ò¯Ð»Ð¸Ð¹Ð½ (vault) Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°Ð½Ð´ Ð°ÑˆÐ¸Ð³Ð³Ò¯Ð¹ Ð±Ð°Ð¹ÑÐ°Ð½");
-  if (wf.score <= 0.3 && wf.positive_folds >= 3) why.push("Ð°ÑˆÐ¸Ð³ Ð½ÑŒ Ñ…ÑÑ‚ Ñ‚Ð¾Ð³Ñ‚Ð²Ð¾Ñ€Ð³Ò¯Ð¹ Ð±Ð°Ð¹ÑÐ°Ð½");
-  if ((v?.trades ?? 0) < 8) why.push("vault-Ð´ Ñ…ÑÑ‚ Ñ†Ó©Ó©Ð½ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð° Ñ…Ð¸Ð¹ÑÑÐ½");
-  return "âŒ Ð¢ÑÐ½Ñ†ÑÑÐ³Ò¯Ð¹: " + (why.join("; ") || "ÑˆÐ°Ð»Ð³ÑƒÑƒÑ€Ñ‹Ð³ Ñ…Ð°Ð½Ð³Ð°Ð°Ð³Ò¯Ð¹") + ".";
+  if (wf.positive_folds < 3) why.push(`4 хугацааны 3-т нь ашигтай байх ёстой, ${wf.positive_folds}-т нь л ашигтай байсан`);
+  if (!(v?.return > 0)) why.push("хамгийн сүүлийн (vault) хугацаанд ашиггүй байсан");
+  if (wf.score <= 0.3 && wf.positive_folds >= 3) why.push("ашиг нь хэт тогтворгүй байсан");
+  if ((v?.trades ?? 0) < 8) why.push("vault-д хэт цөөн арилжаа хийсэн");
+  return "❌ Тэнцээгүй: " + (why.join("; ") || "шалгуурыг хангаагүй") + ".";
 }
 function renderLibrary(d) {
-  if (!d.library.length) return '<div class="empty">Ð¡Ð°Ð½ Ñ…Ð¾Ð¾ÑÐ¾Ð½ Ð±Ð°Ð¹Ð½Ð°</div>';
+  if (!d.library.length) return '<div class="empty">Сан хоосон байна</div>';
   const rows = d.library.map((s, i) => {
     const wf = s.stats?.walk_forward, v = s.stats?.vault || {}, key = "lib" + i;
-    const mark = {approved: "âœ…", rejected: "âŒ"}[s.status] || "â³";
+    const mark = {approved: "✅", rejected: "❌"}[s.status] || "⏳";
     const google = "https://www.google.com/search?q=" + encodeURIComponent(s.name + " trading strategy");
     const src = (s.source || "").match(/https?:\/\/\S+/);
-    const rules = (list, side) => (list && list.length) ? `<p><b>${side}</b>: Ð±Ò¯Ñ… Ð½Ó©Ñ…Ñ†Ó©Ð» Ð·ÑÑ€ÑÐ³ Ð±Ð¸ÐµÐ»ÑÑ…ÑÐ´</p>` +
-      list.map(c => `<div class="rule">â€¢ ${esc(ruleText(c))}</div>`).join("") : "";
+    const rules = (list, side) => (list && list.length) ? `<p><b>${side}</b>: бүх нөхцөл зэрэг биелэхэд</p>` +
+      list.map(c => `<div class="rule">• ${esc(ruleText(c))}</div>`).join("") : "";
     DETAIL[key] = `<h3>${mark} ${esc(s.name)}</h3>
-      <div class="sub">${s.source === "classic" ? "Ð¡Ð¾Ð½Ð³Ð¾Ð´Ð¾Ð³ ÑÑ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸" : "Ð˜Ð½Ñ‚ÐµÑ€Ð½ÑÑ‚ÑÑÑ AI-Ð¸Ð¹Ð½ Ð¾Ð»ÑÐ¾Ð½ ÑÑ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸"}</div>
-      <p>${esc(SEED_INFO[s.name] || s.description || "Ð¢Ð°Ð¹Ð»Ð±Ð°Ñ€ Ð°Ð»Ð³Ð°.")}</p>
-      ${rules(s.long_entry, "ðŸ“ˆ Ð¥ÑƒÐ´Ð°Ð»Ð´Ð°Ð½ Ð°Ð²Ð°Ñ… (LONG)")}${rules(s.short_entry, "ðŸ“‰ Ð—Ð°Ñ€Ð°Ñ… (SHORT)")}
-      ${wf ? `<p><b>Ð¨Ð°Ð»Ð³Ð°Ð»Ñ‚Ñ‹Ð½ Ð´Ò¯Ð½</b> (2 Ð¶Ð¸Ð»Ð¸Ð¹Ð½ Ñ‚Ò¯Ò¯Ñ…, ÑˆÐ¸Ð¼Ñ‚Ð³ÑÐ» Ð¾Ñ€ÑÐ¾Ð½):</p><div class="chips">
-        ${wf.fold_returns.map((r, j) => `<span class="chip ${cls(r)}">${j + 1}-Ñ€ Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð° ${pct(r)}</span>`).join("")}
-        <span class="chip ${cls(v.return)}">Vault ${pct(v.return)} Â· ${v.trades ?? 0} Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð°</span></div>` : ""}
+      <div class="sub">${s.source === "classic" ? "Сонгодог стратеги" : "Интернэтээс AI-ийн олсон стратеги"}</div>
+      <p>${esc(SEED_INFO[s.name] || s.description || "Тайлбар алга.")}</p>
+      ${rules(s.long_entry, "📈 Худалдан авах (LONG)")}${rules(s.short_entry, "📉 Зарах (SHORT)")}
+      ${wf ? `<p><b>Шалгалтын дүн</b> (2 жилийн түүх, шимтгэл орсон):</p><div class="chips">
+        ${wf.fold_returns.map((r, j) => `<span class="chip ${cls(r)}">${j + 1}-р хугацаа ${pct(r)}</span>`).join("")}
+        <span class="chip ${cls(v.return)}">Vault ${pct(v.return)} · ${v.trades ?? 0} арилжаа</span></div>` : ""}
       <p>${verdict(s)}</p>
-      <a class="btn" href="${google}" target="_blank" rel="noopener">ðŸ”Ž Google-ÑÑÑ Ñ…Ð°Ð¹Ñ…</a>
-      ${src ? `<a class="btn" href="${esc(src[0])}" target="_blank" rel="noopener">Ð­Ñ… ÑÑƒÑ€Ð²Ð°Ð»Ð¶ â†—</a>` : ""}`;
+      <a class="btn" href="${google}" target="_blank" rel="noopener">🔎 Google-ээс хайх</a>
+      ${src ? `<a class="btn" href="${esc(src[0])}" target="_blank" rel="noopener">Эх сурвалж ↗</a>` : ""}`;
     return `<tr class="click" data-detail="${key}">
       <td class="wrap2">${mark} ${esc(s.name)}</td>
-      <td>${wf ? wf.positive_folds + "/4" : "â€“"}</td>
+      <td>${wf ? wf.positive_folds + "/4" : "–"}</td>
       <td class="${cls(v.return)}">${pct(v.return)}</td>
-      <td><a class="icon" href="${google}" target="_blank" rel="noopener" title="Google-ÑÑÑ Ñ…Ð°Ð¹Ñ…">ðŸ”Ž</a></td></tr>`;
+      <td><a class="icon" href="${google}" target="_blank" rel="noopener" title="Google-ээс хайх">🔎</a></td></tr>`;
   }).join("");
-  return `<table><thead><tr><th>Ð¡Ñ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸</th><th>ÐÑˆÐ¸Ð³Ñ‚Ð°Ð¹</th><th>Vault</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<table><thead><tr><th>Стратеги</th><th>Ашигтай</th><th>Vault</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function table(rows, cols) {
-  if (!rows || !rows.length) return '<div class="empty">ÐžÐ´Ð¾Ð¾Ð³Ð¾Ð¾Ñ€ Ð°Ð»Ð³Ð°</div>';
+  if (!rows || !rows.length) return '<div class="empty">Одоогоор алга</div>';
   return "<table><thead><tr>" + cols.map(c => `<th>${c[0]}</th>`).join("") + "</tr></thead><tbody>" +
     rows.map(r => "<tr>" + cols.map(c => c[2] ? `<td class="${c[2](r)}">${c[1](r)}</td>` : `<td>${c[1](r)}</td>`).join("") + "</tr>").join("") +
     "</tbody></table>";
 }
 
 // ---- recent trades: one line each, details in a popup ----
-const REASON = {tp: "ðŸŽ¯ TP", stop: "âŒ Stop", stop_after_partial: "ðŸ”’ Ð¥Ð°Ð³Ð°Ñ + stop", flip: "ðŸ”„ Ð­Ñ€Ð³ÑÑÑÐ½",
-  time: "âŒ› Ð¥ÑƒÐ³Ð°Ñ†Ð°Ð°", trail: "ðŸ”’ Ð¥Ð°Ð¼Ð³Ð°Ð°Ð»Ð°Ð»Ñ‚", kill_switch: "ðŸ›‘ Kill switch", manual: "âœ‹ Ð“Ð°Ñ€Ð°Ð°Ñ€", no_stop: "ðŸš¨ Stop-Ð³Ò¯Ð¹"};
-const PART = {trend: "Trend", momentum: "Momentum (RSI)", mean_rev: "Ð‘ÑƒÑ†Ð°Ñ… Ñ…Ð°Ð½Ð´Ð»Ð°Ð³Ð°", breakout: "Breakout", funding: "Funding",
-  fng: "Fear & Greed", macd: "MACD", news: "ÐœÑÐ´ÑÑ", crowd: "ÐžÐ»Ð¾Ð½ Ð½Ð¸Ð¹Ñ‚", top: "Ð¢Ð¾Ð¼ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð°Ñ‡Ð¸Ð´", oi: "Open interest",
-  patterns: "Chart pattern", library: "Ð¡Ñ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸Ð¹Ð½ ÑÐ°Ð½", htf: "4Ñ†/1Ó©Ð´Ñ€Ð¸Ð¹Ð½ trend"};
+const REASON = {tp: "🎯 TP", stop: "❌ Stop", stop_after_partial: "🔒 Хагас + stop", flip: "🔄 Эргэсэн",
+  time: "⌛ Хугацаа", trail: "🔒 Хамгаалалт", kill_switch: "🛑 Kill switch", manual: "✋ Гараар", no_stop: "🚨 Stop-гүй"};
+const PART = {trend: "Trend", momentum: "Momentum (RSI)", mean_rev: "Буцах хандлага", breakout: "Breakout", funding: "Funding",
+  fng: "Fear & Greed", macd: "MACD", news: "Мэдээ", crowd: "Олон нийт", top: "Том арилжаачид", oi: "Open interest",
+  patterns: "Chart pattern", library: "Стратегийн сан", htf: "4ц/1өдрийн trend"};
 const coin = (s) => String(s || "").split("/")[0];
-// 10 trades per page; â€¹ â€º flip through older ones (the page stays put across the 30s refresh)
+// 10 trades per page; ‹ › flip through older ones (the page stays put across the 30s refresh)
 const PAGE = 10;
 let tradePage = 0, lastData = null;
 function pageTrades(delta) {
@@ -368,38 +368,38 @@ function renderTrades(d) {
   const pages = Math.max(1, Math.ceil(d.trades.length / PAGE));
   tradePage = Math.min(Math.max(tradePage, 0), pages - 1);
   $("trades-pager").innerHTML = d.trades.length > PAGE ? `
-    <button class="q" onclick="pageTrades(-1)" ${tradePage === 0 ? "disabled" : ""} aria-label="Ð¨Ð¸Ð½Ñ">â€¹</button>
-    <span class="sub">${tradePage * PAGE + 1}â€“${Math.min((tradePage + 1) * PAGE, d.trades.length)} / ${d.trades.length}</span>
-    <button class="q" onclick="pageTrades(1)" ${tradePage >= pages - 1 ? "disabled" : ""} aria-label="Ð¥ÑƒÑƒÑ‡Ð¸Ð½">â€º</button>` : "";
-  if (!d.trades.length) return '<div class="empty">ÐžÐ´Ð¾Ð¾Ð³Ð¾Ð¾Ñ€ Ð°Ð»Ð³Ð°</div>';
+    <button class="q" onclick="pageTrades(-1)" ${tradePage === 0 ? "disabled" : ""} aria-label="Шинэ">‹</button>
+    <span class="sub">${tradePage * PAGE + 1}–${Math.min((tradePage + 1) * PAGE, d.trades.length)} / ${d.trades.length}</span>
+    <button class="q" onclick="pageTrades(1)" ${tradePage >= pages - 1 ? "disabled" : ""} aria-label="Хуучин">›</button>` : "";
+  if (!d.trades.length) return '<div class="empty">Одоогоор алга</div>';
   const rows = d.trades.slice(tradePage * PAGE, (tradePage + 1) * PAGE).map((t, j) => {
     const i = tradePage * PAGE + j;
-    const key = "tr" + i, side = t.side === "long" ? "LONG ðŸ“ˆ" : "SHORT ðŸ“‰";
+    const key = "tr" + i, side = t.side === "long" ? "LONG 📈" : "SHORT 📉";
     let parts = "";
     try {
       const p = JSON.parse(t.signal_json || "{}").parts || {};
       parts = Object.entries(p).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 4)
         .map(([k, v]) => `<span class="chip">${PART[k] || k} ${v >= 0 ? "+" : ""}${Number(v).toFixed(2)}</span>`).join("");
     } catch (e) {}
-    const hours = t.closed_ts && t.opened_ts ? ((t.closed_ts - t.opened_ts) / 36e5).toFixed(0) : "â€“";
-    DETAIL[key] = `<h3>${t.pnl > 0 ? "âœ…" : "ðŸ”»"} ${coin(t.symbol)} ${side}</h3>
-      <div class="sub">${time(t.opened_ts)} â†’ ${time(t.closed_ts)} Â· ${hours} Ñ†Ð°Ð³</div>
+    const hours = t.closed_ts && t.opened_ts ? ((t.closed_ts - t.opened_ts) / 36e5).toFixed(0) : "–";
+    DETAIL[key] = `<h3>${t.pnl > 0 ? "✅" : "🔻"} ${coin(t.symbol)} ${side}</h3>
+      <div class="sub">${time(t.opened_ts)} → ${time(t.closed_ts)} · ${hours} цаг</div>
       <table><tbody>
-        <tr><td>Ð¨Ð°Ð»Ñ‚Ð³Ð°Ð°Ð½</td><td>${REASON[t.exit_reason] || esc(t.exit_reason)}</td></tr>
-        <tr><td>ÐžÑ€ÑÐ¾Ð½ â†’ Ð“Ð°Ñ€ÑÐ°Ð½</td><td>${fmtp(t.entry)} â†’ ${fmtp(t.exit)}</td></tr>
+        <tr><td>Шалтгаан</td><td>${REASON[t.exit_reason] || esc(t.exit_reason)}</td></tr>
+        <tr><td>Орсон → Гарсан</td><td>${fmtp(t.entry)} → ${fmtp(t.exit)}</td></tr>
         <tr><td>Stop / TP</td><td>${fmtp(t.stop)} / ${fmtp(t.tp)}</td></tr>
-        <tr><td>Ð”Ò¯Ð½</td><td class="${cls(t.pnl)}">${fmt(t.pnl)} $ (${fmt(t.r_multiple)}R)</td></tr>
-        <tr><td>Ð¨Ð°Ð³Ð½Ð°Ð»</td><td>${fmt(t.reward)}</td></tr></tbody></table>
-      ${parts ? `<p><b>ÐÑÑÑ… Ò¯ÐµÐ¸Ð¹Ð½ Ð³Ð¾Ð» ÑˆÐ°Ð»Ñ‚Ð³Ð°Ð°Ð½:</b></p><div class="chips">${parts}</div>` : ""}
-      ${t.review ? `<p><b>ðŸ“ AI Ð´Ò¯Ð³Ð½ÑÐ»Ñ‚:</b> ${esc(t.review)}</p>` : ""}`;
+        <tr><td>Дүн</td><td class="${cls(t.pnl)}">${fmt(t.pnl)} $ (${fmt(t.r_multiple)}R)</td></tr>
+        <tr><td>Шагнал</td><td>${fmt(t.reward)}</td></tr></tbody></table>
+      ${parts ? `<p><b>Нээх үеийн гол шалтгаан:</b></p><div class="chips">${parts}</div>` : ""}
+      ${t.review ? `<p><b>📝 Дүгнэлт:</b></p><pre style="white-space:pre-wrap;font:inherit;margin:0">${esc(t.review)}</pre>` : ""}`;
     return `<tr class="click" data-detail="${key}">
       <td>${new Date(t.closed_ts).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}</td>
       <td>${coin(t.symbol)} <span class="sub">${t.side}</span></td>
       <td class="${cls(t.pnl)}">${fmt(t.pnl)} $</td><td class="${cls(t.r_multiple)}">${fmt(t.r_multiple)}R</td>
       <td>${REASON[t.exit_reason] || esc(t.exit_reason)}</td></tr>`;
   }).join("");
-  return `<table><thead><tr><th>Ð¥Ð°Ð°Ð³Ð´ÑÐ°Ð½</th><th>ÐšÐ¾Ð¹Ð½</th><th>ÐÑˆÐ¸Ð³</th><th>R</th><th>Ð¨Ð°Ð»Ñ‚Ð³Ð°Ð°Ð½</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="sub" style="margin-top:6px">ÐœÓ©Ñ€ Ð´ÑÑÑ€ Ð´Ð°Ñ€Ð¶ Ð´ÑÐ»Ð³ÑÑ€ÑÐ½Ð³Ò¯Ð¹ (Ð´Ò¯Ð³Ð½ÑÐ»Ñ‚ Ð¾Ñ€Ð½Ð¾) Ñ…Ð°Ñ€Ð½Ð° ÑƒÑƒ</div>`;
+  return `<table><thead><tr><th>Хаагдсан</th><th>Койн</th><th>Ашиг</th><th>R</th><th>Шалтгаан</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="sub" style="margin-top:6px">Мөр дээр дарж дэлгэрэнгүй (дүгнэлт орно) харна уу</div>`;
 }
 
 let chart;
@@ -424,38 +424,38 @@ function drawChart(hist) {
 async function load() {
   let d;
   try { d = await (await fetch("/api/data")).json(); }
-  catch (e) { $("updated").textContent = "Ð‘Ð¾Ñ‚ Ð°Ð¶Ð¸Ð»Ð»Ð°Ñ…Ð³Ò¯Ð¹ Ð±Ð°Ð¹Ð½Ð° ÑƒÑƒ? " + e; return; }
-  $("updated").textContent = `${d.mode.toUpperCase()} Â· ${d.symbols.join(", ")} Â· ${new Date().toLocaleTimeString()}`;
+  catch (e) { $("updated").textContent = "Бот ажиллахгүй байна уу? " + e; return; }
+  $("updated").textContent = `${d.mode.toUpperCase()} · ${d.symbols.join(", ")} · ${new Date().toLocaleTimeString()}`;
 
   const day = d.day || {};
   const dayChg = (d.equity && day.start_equity) ? d.equity / day.start_equity - 1 : null;
   const alive = d.heartbeat && Date.now() - d.heartbeat < 10 * 60 * 1000;   // the bot writes it every loop
-  const state = !alive ? "â¹ Ð±Ð¾Ñ‚ Ð°Ð¶Ð¸Ð»Ð»Ð°Ñ…Ð³Ò¯Ð¹ Ð±Ð°Ð¹Ð½Ð°" : d.paused ? "â¸ Ñ‚Ò¯Ñ€ Ð·Ð¾Ð³ÑÑÐ¾Ð½" :
-    (day.halted ? "ðŸ›‘ kill switch" : "âœ… Ð°Ð¶Ð¸Ð»Ð»Ð°Ð¶ Ð±Ð°Ð¹Ð½Ð°");
-  const paperDays = d.paper_started ? ((Date.now() - d.paper_started) / 86400000).toFixed(1) + " Ñ…Ð¾Ð½Ð¾Ð³" : "â€“";
+  const state = !alive ? "⏹ бот ажиллахгүй байна" : d.paused ? "⏸ түр зогссон" :
+    (day.halted ? "🛑 kill switch" : "✅ ажиллаж байна");
+  const paperDays = d.paper_started ? ((Date.now() - d.paper_started) / 86400000).toFixed(1) + " хоног" : "–";
   $("kpis").innerHTML = [
     ["Equity", fmt(d.equity) + " USDT", ""],
-    ["Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€", pct(dayChg), cls(dayChg)],
-    ["ÐžÑ€Ð³Ð¸Ð»Ð¾Ð¾Ñ ÑƒÐ½Ð°Ð»Ñ‚", pct(-d.drawdown), cls(-d.drawdown)],
-    ["Ð”Ð¾Ð¿Ð°Ð¼Ð¸Ð½", `${fmt(d.dopamine)} ${d.mood}`, cls(d.dopamine)],
-    ["Ð¢Ó©Ð»Ó©Ð²", state, ""],
-    ["Ð¢ÑƒÑ€ÑˆÐ¸Ð»Ñ‚Ñ‹Ð½ Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð°", paperDays, ""],
+    ["Өнөөдөр", pct(dayChg), cls(dayChg)],
+    ["Оргилоос уналт", pct(-d.drawdown), cls(-d.drawdown)],
+    ["Допамин", `${fmt(d.dopamine)} ${d.mood}`, cls(d.dopamine)],
+    ["Төлөв", state, ""],
+    ["Туршилтын хугацаа", paperDays, ""],
   ].map(([l, v, c]) => `<div class="card kpi"><div class="label">${l}</div><div class="value ${c}">${v}</div></div>`).join("");
 
   const banners = [];
-  if (d.drift.warning) banners.push(`âš ï¸ Ð‘Ð¾Ð´Ð¸Ñ‚ Ò¯Ñ€ Ð´Ò¯Ð½ (${fmt(d.drift.live_avg_r)}R) backtest-Ð¸Ð¹Ð½ Ð°Ð¼Ð»Ð°ÑÐ½Ð°Ð°Ñ (${fmt(d.drift.backtest_avg_r)}R) Ñ…Ð°Ð¼Ð°Ð°Ð³Ò¯Ð¹ Ð¼ÑƒÑƒ Ð±Ð°Ð¹Ð½Ð°. Ð¡Ñ‚Ñ€Ð°Ñ‚ÐµÐ³Ð¸ Ñ…ÑƒÑƒÑ‡Ð¸Ñ€ÑÐ°Ð½ Ð±Ð°Ð¹Ð¶ Ð¼Ð°Ð³Ð°Ð´Ð³Ò¯Ð¹.`);
-  if (d.blackout?.now) banners.push(`ðŸ“… Ð§ÑƒÑ…Ð°Ð» Ò¯Ð¹Ð» ÑÐ²Ð´Ð»Ñ‹Ð½ Ñ†Ð°Ð³ (${esc(d.blackout.now)}): ÑˆÐ¸Ð½Ñ Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð° Ñ‚Ò¯Ñ€ Ð½ÑÑÐ³Ð´ÑÑ…Ð³Ò¯Ð¹.`);
+  if (d.drift.warning) banners.push(`⚠️ Бодит үр дүн (${fmt(d.drift.live_avg_r)}R) backtest-ийн амласнаас (${fmt(d.drift.backtest_avg_r)}R) хамаагүй муу байна. Стратеги хуучирсан байж магадгүй.`);
+  if (d.blackout?.now) banners.push(`📅 Чухал үйл явдлын цаг (${esc(d.blackout.now)}): шинэ арилжаа түр нээгдэхгүй.`);
   $("banners").innerHTML = banners.map(b => `<div class="banner">${b}</div>`).join("");
 
   drawChart(d.equity_history);
 
   const pend = Object.entries(d.pending || {}).map(([s, p]) => ({symbol: s, side: p.side === 1 ? "long" : "short", entry: p.limit, stop: null, tp: null, pending: true}));
   $("open").innerHTML = table([...d.open_trades, ...pend], [
-    ["ÐšÐ¾Ð¹Ð½", r => esc(r.symbol)], ["Ð§Ð¸Ð³Ð»ÑÐ»", r => r.side + (r.pending ? " (limit Ñ…Ò¯Ð»ÑÑÐ¶ Ð±ÑƒÐ¹)" : "")],
-    ["ÐžÑ€ÑÐ¾Ð½", r => fmtp(r.entry)],
-    ["ÐžÐ´Ð¾Ð¾Ð³Ð¸Ð¹Ð½ Ñ…Ð°Ð½Ñˆ", r => {
+    ["Койн", r => esc(r.symbol)], ["Чиглэл", r => r.side + (r.pending ? " (limit хүлээж буй)" : "")],
+    ["Орсон", r => fmtp(r.entry)],
+    ["Одоогийн ханш", r => {
       const p = d.prices?.[r.symbol];
-      if (p == null || r.pending) return "â€“";
+      if (p == null || r.pending) return "–";
       const ch = (p / r.entry - 1) * 100;
       return `${fmtp(p)} <span class="sub">(${ch >= 0 ? "+" : ""}${ch.toFixed(2)}%)</span>`;
     }, r => {  // green when the move helps the position (price down for a short)
@@ -463,7 +463,7 @@ async function load() {
       return p == null || r.pending ? "" : cls((p - r.entry) * (r.side === "long" ? 1 : -1));
     }],
     ["Stop", r => fmtp(r.stop)], ["TP", r => fmtp(r.tp)],
-    ["Ð¥Ð°Ð³Ð°Ñ Ð°Ð²ÑÐ°Ð½", r => r.partial_done ? "âœ“" : ""],
+    ["Хагас авсан", r => r.partial_done ? "✓" : ""],
   ]);
   $("events").innerHTML = renderEvents(d);
 
@@ -473,20 +473,20 @@ async function load() {
 
   const carries = [...d.carry_open.map(c => ({...c, open: true})), ...d.carry_closed];
   $("carry").innerHTML = table(carries, [
-    ["ÐšÐ¾Ð¹Ð½", r => esc(r.symbol)], ["Ð¢Ó©Ð»Ó©Ð²", r => r.open ? "Ð½ÑÑÐ»Ñ‚Ñ‚ÑÐ¹" : esc(r.note || "Ñ…Ð°Ð°Ð³Ð´ÑÐ°Ð½")],
-    ["Ð¥ÑÐ¼Ð¶ÑÑ", r => fmt(r.qty * r.perp_entry, 0) + " $"], ["Funding", r => fmt(r.funding) + " $", r => cls(r.funding)],
-    ["ÐÐ¸Ð¹Ñ‚", r => r.pnl == null ? "â€“" : fmt(r.pnl) + " $", r => cls(r.pnl)],
+    ["Койн", r => esc(r.symbol)], ["Төлөв", r => r.open ? "нээлттэй" : esc(r.note || "хаагдсан")],
+    ["Хэмжээ", r => fmt(r.qty * r.perp_entry, 0) + " $"], ["Funding", r => fmt(r.funding) + " $", r => cls(r.funding)],
+    ["Нийт", r => r.pnl == null ? "–" : fmt(r.pnl) + " $", r => cls(r.pnl)],
   ]);
 
   $("library").innerHTML = renderLibrary(d);
 
   const m = d.params.metrics || {};
   const v = m.vault || m.backtest?.vault || {};
-  const edges = Object.entries(d.params.pattern_edges || {}).filter(([, e]) => e).map(([k, e]) => `${k} ${fmt(e)}`).join(", ") || "â€“";
-  $("params").innerHTML = `<div class="muted">${esc(d.params.note || "Ð°Ð½Ñ…Ð½Ñ‹ Ñ‚Ð¾Ñ…Ð¸Ñ€Ð³Ð¾Ð¾")} Â· ${esc(d.params.updated || "")}</div>
-    <p>Vault (Ñ…Ð°Ð¼Ð³Ð¸Ð¹Ð½ ÑÒ¯Ò¯Ð»Ð¸Ð¹Ð½ 15%): Ð¾Ð½Ð¾Ð¾ <b class="${cls(v.score)}">${fmt(v.score)}</b>, Ó©Ð³Ó©Ó©Ð¶ <b class="${cls(v.return)}">${pct(v.return)}</b>, ${v.trades ?? "â€“"} Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð°, Ð´ÑƒÐ½Ð´Ð°Ð¶ ${fmt(v.avg_r)}R</p>
-    <p>Ð‘Ð¾Ð´Ð¸Ñ‚ Ð´ÑƒÐ½Ð´Ð°Ð¶: <b class="${cls(d.drift.live_avg_r)}">${fmt(d.drift.live_avg_r)}R</b> (${d.drift.live_trades} Ð°Ñ€Ð¸Ð»Ð¶Ð°Ð°)</p>
-    <p class="muted">ÐÐ¶Ð¸Ð»Ð»Ð°Ð´Ð°Ð³ pattern-ÑƒÑƒÐ´: ${esc(edges)}</p>`;
+  const edges = Object.entries(d.params.pattern_edges || {}).filter(([, e]) => e).map(([k, e]) => `${k} ${fmt(e)}`).join(", ") || "–";
+  $("params").innerHTML = `<div class="muted">${esc(d.params.note || "анхны тохиргоо")} · ${esc(d.params.updated || "")}</div>
+    <p>Vault (хамгийн сүүлийн 15%): оноо <b class="${cls(v.score)}">${fmt(v.score)}</b>, өгөөж <b class="${cls(v.return)}">${pct(v.return)}</b>, ${v.trades ?? "–"} арилжаа, дундаж ${fmt(v.avg_r)}R</p>
+    <p>Бодит дундаж: <b class="${cls(d.drift.live_avg_r)}">${fmt(d.drift.live_avg_r)}R</b> (${d.drift.live_trades} арилжаа)</p>
+    <p class="muted">Ажилладаг pattern-ууд: ${esc(edges)}</p>`;
 }
 load();
 setInterval(load, 30000);
