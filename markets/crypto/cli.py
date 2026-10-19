@@ -1,4 +1,10 @@
 """Crypto-only CLI commands: python main.py crypto <command>."""
+import logging
+import time
+
+from core.storage import Storage
+
+
 def carry_report(st):
     from . import carry
     print("Одоогийн funding (жилийн, сүүлийн 3 төлбөрийн дундаж):")
@@ -8,6 +14,33 @@ def carry_report(st):
     for r in carry.backtest():
         print(f"  {r['symbol']:16} зах зээлд {r['time_in_market']:.0%} хугацаа, "
               f"хөрөнгөнд жилд {r['return_per_year_on_capital']:+.2%}")
+
+
+def s2run(st):
+    """Strategy 2 shadow: paper-trades next to the main bot, never places orders."""
+    from . import strategy2
+    log = logging.getLogger("s2")
+    while True:
+        try:
+            s = strategy2.step(Storage())
+            if s:
+                log.info("Стратеги 2 (shadow): %.2f $ (%+.2f%%)", s["equity"], (s["equity"] / s["start_equity"] - 1) * 100)
+        except Exception:
+            log.exception("Стратеги 2 алхам амжилтгүй")
+        time.sleep(300)
+
+
+def s2(st):
+    from . import strategy2
+    snap = strategy2.snapshot(st)
+    if not snap:
+        print("Стратеги 2 хараахан эхлээгүй байна")
+        return
+    side = {1: "long", -1: "short", 0: "—"}
+    print(f"Стратеги 2 (shadow): {snap['equity']:,.2f} $ ({snap['return']:+.2%}), нийт байрлал {snap['exposure']:.0%}")
+    for c, p in snap["coins"].items():
+        print(f"  {c:4} momentum {side.get(p['momentum'], '—'):5}  premium {side.get(p['premium'], '—'):5}  "
+              f"жин {p['weight']:+.1%}")
 
 
 def liqrecord(st):
@@ -29,6 +62,8 @@ def liquidations_report(st):
 
 COMMANDS = {
     "carry": (carry_report, "funding carry: одоогийн funding + 2 жилийн backtest"),
+    "s2": (s2, "Стратеги 2 (shadow)-ын одоогийн байдал"),
+    "s2run": (s2run, "Стратеги 2 shadow-ыг тасралтгүй ажиллуулах (захиалга тавихгүй)"),
     "liquidations": (liquidations_report, "сүүлийн 24 цагийн liquidation-ий дүн"),
     "liqrecord": (liqrecord, "liquidation цуглуулагч (тусдаа service)"),
 }

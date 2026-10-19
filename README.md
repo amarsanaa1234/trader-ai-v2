@@ -28,6 +28,7 @@ trader_ai_v2/
 │       ├── config.yaml     койн, timeframe, шимтгэл, мэдээний эх сурвалж
 │       ├── adapter.py      5 криптогийн эх сурвалж (funding, F&G, олон нийт, top, OI)
 │       ├── data.py, broker.py, carry.py
+│       ├── strategy2.py    Стратеги 2 (shadow, зөвхөн крипто)
 │       ├── liquidations.py Liquidation цуглуулагч
 │       └── cli.py          криптогийн нэмэлт командууд
 ├── data/<зах зээл>/        bot.db, strategy_params.json, сан, лог (git-д орохгүй)
@@ -71,7 +72,7 @@ copy .env.example .env
 ```
 
 - Ерөнхий командууд: `sync, backtest, library, research, improve, shadows, news, events, check, status, report, dashboard, telegram, resetpeak, run`
-- Криптогийн нэмэлт командууд: `carry, liquidations, liqrecord`
+- Криптогийн нэмэлт командууд: `carry, s2, s2run, liquidations, liqrecord`
 
 ## Шалгалтууд
 
@@ -94,7 +95,7 @@ copy .env.example .env
 
 ## 0-р шатны дүн (2026-10-13)
 
-- v1 (`crypto_ai`)-ийн бүх кодыг шинэ бүтэц рүү шилжүүлсэн. Liquidation цуглуулагч ч орсон. (Стратеги 2-ын shadow тестийг 2026-10-19-нд хассан.)
+- v1 (`crypto_ai`)-ийн бүх кодыг шинэ бүтэц рүү шилжүүлсэн. Стратеги 2 (зөвхөн крипто) болон liquidation цуглуулагч ч орсон.
 - **Parity:** ижил өгөгдөл дээр v1 ба v2-ийн backtest, walk-forward, vault болон 5 койны 87,733 дохио **яг ижил** гарсан.
 - 19 автомат тест. Нэг жинхэнэ алдаа олдож засагдсан: яг −10.000% уналтад эрсдэл хагасрахгүй байсан (бутархай тооны дугуйрлаас болсон).
 - Сервер дээр ажиллаж буй v1 бот **хөндөгдөөгүй**.

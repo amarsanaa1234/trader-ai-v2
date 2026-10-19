@@ -120,6 +120,10 @@ class Crypto(Market):
         from . import carry
         carry.close(trader.st, trader.broker, carry_row, reason, user=trader.acc.name)
 
+    def dashboard_extras(self, st) -> dict:
+        from . import strategy2
+        return {"brain2": strategy2.dashboard_panel(st)}
+
     def commands(self) -> dict:
         from . import cli
         return cli.COMMANDS
