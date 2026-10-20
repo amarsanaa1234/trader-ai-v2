@@ -186,7 +186,8 @@ class Dataset:
         for sym, d in self.rows.items():
             idx = np.searchsorted(d["ts"], [start_ts, end_ts])
             feats = pd.DataFrame({"signal": signals[sym], "atr": d["atr"]}, index=d["df"].index)
-            res = backtest.run(d["df"], self.p, start=int(idx[0]), end=int(idx[1]), feats=feats)
+            res = backtest.run(d["df"], self.p, start=int(idx[0]), end=int(idx[1]), feats=feats,
+                               costs=mkt().costs_for(sym))
             rs += res.r
             dds.append(res.max_dd)
             rets.append(res.total_return)

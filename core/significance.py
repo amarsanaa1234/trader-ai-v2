@@ -13,12 +13,15 @@ from .context import mkt
 from .strategy import compute
 
 
-def random_benchmark(frames: dict, p: dict, n: int = 200, seed: int = 11) -> dict:
+def random_benchmark(frames: dict, p: dict, n: int = 200, seed: int = 11, feats_by_symbol: dict | None = None) -> dict:
+    """feats_by_symbol: signals made some other way (e.g. the ML filter) instead of compute()."""
     rng = np.random.default_rng(seed)
     base = {}
     actual = []
     for sym, df in frames.items():
-        feats = compute(df, p)
+        feats = (feats_by_symbol or {}).get(sym)
+        if feats is None:
+            feats = compute(df, p)
         start = validation.research_end(len(df))
         res = backtest.run(df, p, start=start, feats=feats, costs=mkt().costs_for(sym))
         actual += res.r
