@@ -147,3 +147,63 @@ def kill_switch(limit) -> str:
 
 def review(trade_id, sym, side, lesson) -> str:
     return "\n".join([f"📝 TRADE REVIEW · #{trade_id}", f"{base_asset(sym)} {SIDE_WORD[side]}", "", lesson])
+
+
+def improve_report(rep: dict, min_shadow_days: int) -> str:
+    """The daily self-improvement run in plain words: what was tried, what passed,
+    what changed (usually nothing: new settings must first win on new candles)."""
+    cur = rep.get("current") or {}
+    wf, v = cur.get("walk_forward") or {}, cur.get("vault") or {}
+    best = rep.get("best_walk_forward") or {}
+    width = {0.05: "narrow (things go well)", 0.10: "normal", 0.20: "wide (results are weak)"}
+    lines = [
+        f"🧠 DAILY SELF-IMPROVEMENT · {mkt().label}",
+        "",
+        f"Tried {rep.get('candidates', 0):,} new settings on the past "
+        f"({width.get(rep.get('search_width'), 'normal')} search, dopamine {rep.get('dopamine', 0):+.2f})",
+        "",
+        "📏 Live settings on the past:",
+        f"• periods with profit: {wf.get('positive_folds', 0)}/4, {wf.get('trades', 0)} trades",
+        f"• held-back test (vault): {v.get('return', 0):+.1%}, {v.get('trades', 0)} trades, "
+        f"avg {v.get('avg_r', 0):+.2f}R",
+    ]
+    if best:
+        lines.append(f"🥇 Best new one: {best.get('positive_folds', 0)}/4 profit periods, "
+                     f"avg {best.get('avg_r', 0):+.2f}R")
+    checked = rep.get("checked") or []
+    if checked:
+        why = {}
+        for c in checked:
+            if c.get("rejected"):
+                why[c["rejected"]] = why.get(c["rejected"], 0) + 1
+        en = {"vault оноо одоогийнхоос дээр биш": "not better than live on the held-back test",
+              "vault дээр арилжаа цөөн": "too few trades to trust",
+              "vault алдагдалтай / уналт их": "lost money or fell too much on the held-back test",
+              "нэг данс эсвэл санамсаргүйтэй харьцуулалтад тэнцээгүй": "no better than random entries"}
+        lines += ["", f"🔍 Checked the top {len(checked)} closely:"]
+        lines += [f"• ✗ {n} × {en.get(k, k)}" for k, n in why.items()]
+        passed = len(checked) - sum(why.values())
+        lines.append(f"• ✓ {passed} passed every test" if passed else "• nothing passed every test")
+    for s in rep.get("new_shadows", []):
+        lines.append(f"🧪 New shadow {s['id']} (held-back test {s['vault'].get('return', 0):+.1%}, "
+                     f"{s['vault'].get('trades', 0)} trades) starts trading on paper next to live")
+    for les in rep.get("lessons") or []:
+        for b in les:
+            lines.append(f"📚 Lesson: stop entering when '{b['tag']}' ({b['trades']} past trades, "
+                         f"avg {b['avg_r']:+.2f}R)")
+    if rep.get("edges_refreshed"):
+        lines.append("🔄 Chart-pattern scores updated")
+    shadows = rep.get("shadow_review") or []
+    if shadows:
+        lines += ["", "👥 Shadows (paper, new candles only):"]
+        for s in shadows:
+            sh = s.get("shadow") or {}
+            lines.append(f"• {s['id']} · {s.get('days', 0):.1f} days · {sh.get('trades', 0)} trades · "
+                         f"{sh.get('return', 0):+.1%}")
+    lines.append("")
+    if rep.get("shadow_promoted"):
+        lines.append(f"✅ CHANGED TODAY: shadow {rep['shadow_promoted']} beat live on new candles and is now live")
+    else:
+        lines.append(f"⏸ Live settings NOT changed today. A shadow must beat them on at least "
+                     f"{min_shadow_days} days of new candles first.")
+    return "\n".join(lines)

@@ -36,7 +36,8 @@ from .context import mkt
 from .features import add_static_features
 from .library import approved
 from .notifier import notify
-from .settings import IMPROVE_HOUR_UTC, LIVE_CONFIRM, LOOP_SECONDS, NEWS_EVAL_FROM, NEWS_EVERY_MIN, base_asset
+from .settings import (IMPROVE_HOUR_UTC, LIVE_CONFIRM, LOOP_SECONDS, NEWS_EVAL_FROM, NEWS_EVERY_MIN,
+                       SHADOW_MIN_DAYS, base_asset)
 from .storage import Storage, now_ms
 from .strategy import compute, load_params, source_names, vault_score
 
@@ -219,7 +220,8 @@ class Trader:
                     notify(f"⚠️ {sym}: the stop-loss was missing, placed it again", key=f"stop{sym}", every_sec=600,
                            to=self.to())
                 except Exception as e:
-                    notify(f"🚨 {sym}: could not place the stop ({e}) -> closing", to=self.to())
+                    notify(f"🚨 {sym}: could not place the stop ({e}) -> closing", key=f"nostop{sym}",
+                           every_sec=3600, to=self.to())   # retried every loop; one message an hour is enough
                     self.close_trade(t, "no_stop")
         known = {t["symbol"] for t in self.open_trades()} | \
                 {c["symbol"] for c in self.st.open_carries(self.m.mode, self.acc.name)}
@@ -646,12 +648,13 @@ class Trader:
 
     def _improve_job(self, dopamine: float):
         try:
-            rep = improver.improve(Storage(), self.m.symbols, dopamine=dopamine)   # own DB connection
-            for s in rep.get("new_shadows", []):
-                notify(f"🧪 New shadow {s['id']}: vault score {s['vault']['score']}, now forward-testing on live candles")
-            if rep.get("shadow_promoted"):
-                notify(f"🧠 Shadow {rep['shadow_promoted']} beat the live settings on new candles, "
-                       "so it is now the active setting")
+            st = Storage()   # own DB connection
+            rep = improver.improve(st, self.m.symbols, dopamine=dopamine)
+            # one plain report a day: what was tried, what passed, what (usually nothing) changed
+            st.set("improve_report", {"ts": now_ms(), **{k: rep.get(k) for k in (
+                "candidates", "dopamine", "search_width", "current", "best_walk_forward", "checked",
+                "new_shadows", "lessons", "edges_refreshed", "shadow_review", "shadow_promoted")}})
+            notify(M.improve_report(rep, SHADOW_MIN_DAYS))
         except Exception:
             log.exception("Өөрийгөө сайжруулах ажил амжилтгүй")
         self._improved = True

@@ -179,6 +179,7 @@ def improve(st, symbols, dopamine: float = 0.0, seed: int | None = None) -> dict
             break
 
     report = {"current": {"walk_forward": cur_wf, "vault": cur_vault}, "candidates": n,
+              "dopamine": round(dopamine, 2), "search_width": scale,
               "best_walk_forward": scored[0][0] if scored else None, "pattern_edges": edges,
               "library_approved": [s["name"] for s in library.approved()], "new_shadows": [], "checked": checked,
               "lessons": lessons}

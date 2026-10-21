@@ -377,6 +377,10 @@ class BinanceBroker:
                     p = {"side": 1 if x["side"] == "long" else -1, "qty": float(x["contracts"])}
         px = None
         if p:
+            # Resting reduce-only take-profits that already cover the position make Binance
+            # reject the market close (-2022 "ReduceOnly Order is rejected"; BNB 2026-10-21),
+            # so clear them first. If the close then fails, reconcile puts a stop back next loop.
+            self.cancel_protection(symbol)
             order = self.ex.create_order(symbol, "market", "sell" if p["side"] == 1 else "buy", p["qty"],
                                          None, {"reduceOnly": True})
             px = float(order.get("average") or self.price(symbol))
