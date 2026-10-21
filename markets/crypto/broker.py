@@ -368,6 +368,17 @@ class BinanceBroker:
                 self.ex.cancel_all_orders(symbol, params=params)
             except Exception as e:
                 log.warning("%s захиалга цуцалж чадсангүй %s: %s", symbol, params, e)
+        # Binance demo answered "cancel all ... is done" yet kept BNB's take-profit
+        # (2026-10-21), so cancel whatever is still open one by one.
+        for params in ({"trigger": True}, {}):
+            try:
+                for o in self.ex.fetch_open_orders(symbol, params=params):
+                    try:
+                        self.ex.cancel_order(o["id"], symbol, params=params)
+                    except Exception as e:
+                        log.warning("%s захиалга %s цуцалж чадсангүй: %s", symbol, o["id"], e)
+            except Exception as e:
+                log.warning("%s нээлттэй захиалга уншиж чадсангүй %s: %s", symbol, params, e)
 
     def close(self, symbol):
         p = self.positions().get(symbol)
@@ -381,8 +392,19 @@ class BinanceBroker:
             # reject the market close (-2022 "ReduceOnly Order is rejected"; BNB 2026-10-21),
             # so clear them first. If the close then fails, reconcile puts a stop back next loop.
             self.cancel_protection(symbol)
-            order = self.ex.create_order(symbol, "market", "sell" if p["side"] == 1 else "buy", p["qty"],
-                                         None, {"reduceOnly": True})
+            close_side = "sell" if p["side"] == 1 else "buy"
+            try:
+                order = self.ex.create_order(symbol, "market", close_side, p["qty"], None, {"reduceOnly": True})
+            except ccxt.InvalidOrder as e:
+                # Binance demo kept rejecting reduce-only (-2022) for a plain one-way BNB short with
+                # no orders left (2026-10-21). Re-read the position and send exactly its opposite.
+                if "-2022" not in str(e):
+                    raise
+                fresh = [x for x in self.ex.fetch_positions([symbol]) if float(x.get("contracts") or 0) > 0]
+                if len(fresh) != 1 or (1 if fresh[0]["side"] == "long" else -1) != p["side"]:
+                    raise
+                log.warning("%s reduce-only хаалт татгалзагдсан -> яг хэмжээгээр энгийн захиалгаар хааж байна", symbol)
+                order = self.ex.create_order(symbol, "market", close_side, float(fresh[0]["contracts"]))
             px = float(order.get("average") or self.price(symbol))
         self.cancel_protection(symbol)
         return px
