@@ -9,7 +9,7 @@ import uuid
 from . import validation
 from .settings import SHADOW_MIN_DAYS
 from .storage import now_ms
-from .strategy import load_params, save_params
+from .strategy import clamp_params, load_params, save_params
 
 log = logging.getLogger(__name__)
 DAY_MS = 86_400_000
@@ -40,6 +40,9 @@ def review(st, frames: dict) -> dict:
     keep, report, winner = [], [], None
     for s in shadows:
         days = (now_ms() - s["created"]) / DAY_MS
+        # settings saved before a market gained new sources lack their keys: fill the
+        # defaults (crypto shadows from v1 crashed every daily review, 2026-10-20/21)
+        s["params"] = clamp_params(s["params"])
         mine = validation.forward(frames, s["params"], s["created"])
         theirs = validation.forward(frames, live, s["created"])
         s["forward"], s["live_forward"], s["days"] = mine, theirs, round(days, 1)
