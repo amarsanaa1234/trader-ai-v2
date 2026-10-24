@@ -18,6 +18,11 @@ from .strategy import compute
 DAY_MS = 86_400_000
 
 
+def entry_wait_candles() -> int:
+    """Candles a limit entry stays out after the signal candle (config entry_wait_candles, default 1)."""
+    return max(1, int((getattr(mkt(), "cfg", None) or {}).get("entry_wait_candles", 1)))
+
+
 @dataclass
 class Result:
     trades: list = field(default_factory=list)
@@ -76,9 +81,13 @@ def run(df: pd.DataFrame, params: dict, start: int = 0, end: int | None = None,
     force = np.asarray(mkt().force_exit(df.index, params), dtype=bool)   # e.g. flat before the FX weekend
     maker = entry_order == "maker"
     offset = params.get("entry_offset_atr", 0.0) if maker else 0.0
+    # how many candles a limit entry may wait (live: the same, see Trader.try_enter), and how far
+    # the price must trade through it to count as filled (a market may set both; default 1 / 0)
+    wait = entry_wait_candles()
+    through = costs.get("fill_through", 0.0)
 
     equity = peak = start_equity
-    pos = None
+    pos = pend = None
     day, day_start, halted, trades_today = None, equity, False, 0
     trades, curve, missed = [], [], 0
     max_hold = int(params["max_hold_bars"])
@@ -101,21 +110,25 @@ def run(df: pd.DataFrame, params: dict, start: int = 0, end: int | None = None,
             day, day_start, halted, trades_today = d, equity, False, 0
 
         # ---- entry on the previous candle's signal ----
-        if pos is None and sig[i - 1] != 0 and not halted:
-            side = int(sig[i - 1])
-            dist = params["stop_atr"] * atr[i - 1]
+        if pos is None and pend is None and sig[i - 1] != 0 and not halted:
+            pend = {"side": int(sig[i - 1]), "dist": params["stop_atr"] * atr[i - 1],
+                    "limit": c[i - 1] - int(sig[i - 1]) * offset * atr[i - 1], "until": i + wait - 1}
+        if pos is None and pend is not None:
+            side, dist = pend["side"], pend["dist"]
             if maker:
-                limit = c[i - 1] - side * offset * atr[i - 1]
                 # a post-only order can't sit on the wrong side of the market, so if the
                 # candle opens through the limit we join the book at the open instead
-                limit = min(limit, o[i]) if side == 1 else max(limit, o[i])
-                filled = l[i] <= limit if side == 1 else h[i] >= limit
+                limit = min(pend["limit"], o[i]) if side == 1 else max(pend["limit"], o[i])
+                filled = l[i] <= limit * (1 - through) if side == 1 else h[i] >= limit * (1 + through)
                 entry, fee_rate = limit, MAKER_FEE
             else:
                 filled, entry, fee_rate = True, o[i] * (1 + SLIPPAGE * side), TAKER_FEE
             if not filled:
-                missed += 1
+                if i >= pend["until"] or halted:
+                    missed += 1
+                    pend = None
             else:
+                pend = None
                 stop = entry - side * dist
                 dec = risk_guard.check_entry(equity=equity, entry=entry, stop=stop, side=side, open_positions=0,
                                              open_notional=0.0, trades_today=trades_today, halted=halted,

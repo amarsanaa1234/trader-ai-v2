@@ -208,6 +208,25 @@ def _hold_cost(st: Storage, symbol: str, index: pd.Index, tf: str) -> np.ndarray
     return h_day * rollover_days(row["days"], index, tf)
 
 
+def _hold_cost_then(st: Storage, symbol: str, index: pd.Index, tf: str, rate_diff: np.ndarray) -> np.ndarray:
+    """Swap as it was at the time (audit 2026-10-25): today's OANDA swap moved by how much
+    the two currencies' interest-rate gap has changed since. In 2020-21 US rates were ~0%,
+    today ~3.6%; charging today's swap for all 8 years made old trades cost the wrong amount.
+    The carry signal already used the historical rates, so cost and signal now agree."""
+    row = st.db.execute("SELECT long_rate, short_rate, days FROM financing WHERE symbol=?", (symbol,)).fetchone()
+    if not row:
+        return np.zeros(len(index))
+    h_now = (row["short_rate"] - row["long_rate"]) / 2           # long cost a year, today
+    rd = pd.Series(rate_diff, dtype=float)
+    known = rd.dropna()
+    if known.empty:
+        h_year = np.full(len(index), h_now)
+    else:
+        # a bigger base-minus-quote gap means the long earns more (pays less)
+        h_year = (h_now - (rd - known.iloc[-1]) / 100).fillna(h_now).to_numpy()
+    return h_year / 365 * rollover_days(row["days"], index, tf)
+
+
 def rollover_days(days_csv: str | None, index: pd.Index, tf: str) -> np.ndarray:
     """Days of swap charged at the 17:00 New York rollover inside each candle (0 if none;
     3 on the day that covers the weekend). days_csv: Monday..Sunday from OANDA."""
@@ -327,13 +346,13 @@ def load_frame(st: Storage, symbol: str, tf: str, symbols) -> pd.DataFrame:
     if df.empty:
         return df
     at = df.index + TF_MS[tf]
-    df["hold_cost"] = _hold_cost(st, symbol, df.index, tf)
+    df["rate_diff"] = macro.rate_diff(st, symbol, at).to_numpy()
+    df["hold_cost"] = _hold_cost_then(st, symbol, df.index, tf, df["rate_diff"].to_numpy())
     book = pd.read_sql_query("SELECT ts, long_pct FROM book WHERE symbol=? ORDER BY ts", st.db,
                              params=(symbol,)).set_index("ts")["long_pct"]
     df["long_pct"] = _at_close(book, df.index, tf) if not book.empty else np.nan
     df["usd_mom"] = _usd_momentum(st, tf, symbols, df.index)
     df["usd_side"] = float(usd_side(symbol))
-    df["rate_diff"] = macro.rate_diff(st, symbol, at).to_numpy()
     df["cot_net"] = macro.cot_net(st, symbol, at).to_numpy()
     df["xasset"] = _cross_asset(st, symbol, tf, df.index)
     df["session"] = _sessions(st, symbol, tf, df.index)

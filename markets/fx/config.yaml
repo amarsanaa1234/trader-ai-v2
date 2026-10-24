@@ -23,6 +23,9 @@ book_days: 730          # OANDA crowd history to download (older years: no crowd
 book_every_hours: 6
 paper_start_equity: 10000
 entry_order: maker      # limit entry (FX has no maker rebate; the spread is the cost)
+entry_wait_candles: 2   # owner, 2026-10-25: a limit waits 8 hours (2 candles) after it is placed (was 1)
+fill_through_spread: 0.5  # audit 2026-10-25: candles are mid prices, a buy limit fills on the ask, so the
+                          # backtest counts a fill only when the mid trades half a spread through the limit
 
 # Higher timeframes the score looks at, per base timeframe: [pandas rule, EMA length]
 htf:
@@ -43,7 +46,8 @@ risk:                   # FX moves ~0.1%/hour, so crypto's 0.3% minimum stop wou
   max_stop_distance: 0.03
   max_leverage: 3             # owner's choice (2026-10-18; was 2)
   max_spread: 0.0004          # no new entry while the live spread is wider than 0.04% of price
-  max_currency_risk: 0.02     # open risk leaning one way on one currency (e.g. 3 x "USD falls") <= 2%
+  max_currency_risk: 0.01     # open risk leaning one way on one currency <= 1%: at most two 0.5% trades
+                              # betting the same way on e.g. USD (audit 2026-10-25; was 2% = four)
   max_risk_per_trade: 0.005   # owner, 2026-10-19: 0.5% (1% did worse over 8 years)
   ladder:                     # risk per trade steps with the last 30 closed trades
     levels: [0.005]           # one step while the cap is 0.5% (was 0.5% -> 1%)

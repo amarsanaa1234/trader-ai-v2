@@ -33,7 +33,8 @@ def usd(x: float) -> str:
 
 
 def limit_placed(sym, side, limit, score, threshold) -> str:
-    wait_h = 2 * mkt().tf_ms() / 3_600_000
+    from .backtest import entry_wait_candles
+    wait_h = entry_wait_candles() * mkt().tf_ms() / 3_600_000   # counted from when it is placed
     return "\n".join([
         "🎯 ORDER PLACED",
         f"{base_asset(sym)} {SIDE_WORD[side]}",
@@ -167,6 +168,9 @@ def improve_report(rep: dict, min_shadow_days: int) -> str:
         f"• held-back test (vault): {v.get('return', 0):+.1%}, {v.get('trades', 0)} trades, "
         f"avg {v.get('avg_r', 0):+.2f}R",
     ]
+    if (rep.get("health") or {}).get("weak"):
+        lines.append("⚠️ The live settings no longer pass their own tests -> risk per trade is HALVED "
+                     "until they pass again or a shadow takes over")
     if best:
         lines.append(f"🥇 Best new one: {best.get('positive_folds', 0)}/4 profit periods, "
                      f"avg {best.get('avg_r', 0):+.2f}R")

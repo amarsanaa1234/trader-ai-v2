@@ -42,11 +42,13 @@ class FX(Market):
         "weekend_close": 0.0, # > 0.5: close open trades on Friday evening (avoid the weekend gap)
     }
     param_space = {
-        "w_crowd": (-1.5, 1.0, False), "w_usd": (-1.0, 1.5, False), "usd_scale": (0.002, 0.01, False),
+        # crowd and waiting orders only have OANDA history since 2024-10 (2 of the 8 test years),
+        # so their weight is kept small until more history exists (audit 2026-10-25; was -1.5..1.0)
+        "w_crowd": (-0.6, 0.6, False), "w_usd": (-1.0, 1.5, False), "usd_scale": (0.002, 0.01, False),
         "w_tsmom": (-1.0, 1.5, False), "tsmom_days": (10, 120, True),
         "w_carry": (-1.0, 1.5, False), "w_rates": (-1.0, 1.5, False), "w_cot": (-1.5, 1.0, False),
         "w_xasset": (-1.0, 1.5, False), "w_session": (-1.0, 1.5, False),
-        "w_orders": (-1.0, 1.0, False), "w_yields": (-1.0, 1.5, False), "w_month_end": (-1.0, 1.0, False),
+        "w_orders": (-0.5, 0.5, False), "w_yields": (-1.0, 1.5, False), "w_month_end": (-1.0, 1.0, False),
         "adr_block": (0.6, 2.0, False), "weekend_close": (0.0, 1.0, False),
     }
     rule_columns = ("long_pct", "usd_mom", "rate_diff", "cot_net", "xasset", "session")
@@ -109,9 +111,12 @@ class FX(Market):
         """Per-pair costs from the measured typical spread (spreads.json, made by sync);
         crosses like GBP_JPY cost 2-3x EUR_USD."""
         sp = self._spreads().get(symbol)
+        through = float(self.cfg.get("fill_through_spread", 0.0))   # share of the spread a limit must be beaten by
         if not sp:
-            return self.costs
-        return {"maker": sp * 0.5, "taker": sp * 0.6, "slippage": sp * 0.15}
+            c = dict(self.costs)
+            c["fill_through"] = c["maker"] * 2 * through
+            return c
+        return {"maker": sp * 0.5, "taker": sp * 0.6, "slippage": sp * 0.15, "fill_through": sp * through}
 
     def _spreads(self) -> dict:
         import json
@@ -204,6 +209,19 @@ class FX(Market):
                 data.sync_candles(trader.st, s, self.timeframe, self.history_days)
             except Exception:
                 pass
+        if self.name == "fx":       # FX Strategy 2: paper carry ranking next to the bot (not commodities)
+            from . import strategy2
+            try:
+                strategy2.step(trader.st)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning("FX Strategy 2: %s", e)
+
+    def dashboard_extras(self, st) -> dict:
+        if self.name != "fx":
+            return {}
+        from . import strategy2
+        return {"brain2": strategy2.dashboard_panel(st)}
 
     # ---------- execution ----------
     def make_broker(self, st, account):

@@ -17,6 +17,7 @@ from concurrent.futures import ProcessPoolExecutor
 from . import library, mistakes, patterns, portfolio, shadow, significance, validation
 from .features import add_static_features
 from .context import mkt
+from .storage import now_ms
 from .strategy import clamp_params, load_params, param_space, save_params
 
 log = logging.getLogger(__name__)
@@ -48,6 +49,19 @@ def extra_gates(frames: dict, cand: dict) -> tuple[bool, dict]:
         out["significance"] = sig
         ok &= sig["p_value"] <= float(cfg["max_p_value"])
     return bool(ok), out
+
+
+def settings_health(st, wf: dict, vault: dict) -> dict:
+    """The live settings re-tested on today's data. 'Weak' = at most 1 of 4 history windows
+    profitable AND losing on the vault: they would no longer be accepted as new settings.
+    While weak the trader halves the risk per trade (audit 2026-10-25); it goes back to
+    normal on its own once they pass again or a shadow takes over."""
+    weak = wf["positive_folds"] <= 1 and vault["return"] < 0
+    prev = st.get("settings_health") or {}
+    h = {"weak": bool(weak), "since": prev.get("since") if weak and prev.get("weak") else (now_ms() if weak else None),
+         "positive_folds": wf["positive_folds"], "vault_return": vault["return"]}
+    st.set("settings_health", h)
+    return h
 
 
 def mutate(p: dict, scale: float, rng: random.Random) -> dict:
@@ -129,6 +143,7 @@ def improve(st, symbols, dopamine: float = 0.0, seed: int | None = None) -> dict
     current["pattern_edges"] = edges
     cur_wf = validation.walk_forward(frames, current)
     cur_vault = validation.vault(frames, current)
+    health = settings_health(st, cur_wf, cur_vault)
 
     candidates = [mutate(current, scale, rng) for _ in range(int(n * 0.8))]
     candidates += [random_params(rng, current) for _ in range(n - len(candidates))]
@@ -179,7 +194,7 @@ def improve(st, symbols, dopamine: float = 0.0, seed: int | None = None) -> dict
             break
 
     report = {"current": {"walk_forward": cur_wf, "vault": cur_vault}, "candidates": n,
-              "dopamine": round(dopamine, 2), "search_width": scale,
+              "dopamine": round(dopamine, 2), "search_width": scale, "health": health,
               "best_walk_forward": scored[0][0] if scored else None, "pattern_edges": edges,
               "library_approved": [s["name"] for s in library.approved()], "new_shadows": [], "checked": checked,
               "lessons": lessons}

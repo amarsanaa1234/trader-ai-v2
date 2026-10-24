@@ -27,7 +27,7 @@ import numpy as np
 
 import markets
 
-from . import (events, exits, improver, live_check, news, news_eval, research, review, reward, risk_guard, risk_ladder,
+from . import (backtest, events, exits, improver, live_check, news, news_eval, research, review, reward, risk_guard, risk_ladder,
                telegram_bot)
 from . import messages as M
 from . import users as users_mod
@@ -295,7 +295,14 @@ class Trader:
         return risk_guard.currency_risk(legs, sym, side)
 
     def risk_per_trade(self) -> float | None:
-        """The person's own choice, capped by the market's risk ladder (if it has one)."""
+        """The person's own choice, capped by the market's risk ladder (if it has one), and
+        halved while the live settings no longer pass their own tests (see improver.health)."""
+        r = self._risk_per_trade()
+        if (self.st.get("settings_health") or {}).get("weak"):
+            r = 0.5 * (r if r else risk_guard.market_risk_cap())
+        return r
+
+    def _risk_per_trade(self) -> float | None:
         mine = self.acc.user.risk_per_trade
         lad = risk_ladder.config()
         if not lad:
@@ -333,7 +340,9 @@ class Trader:
             notify(f"❌ {sym}: could not place the order: {e}", key=f"openerr{sym}", every_sec=1800, to=self.to())
             return None
         pend.update(side=side, dist=dist, bar_ts=sig["bar_ts"], sig=sig, retries=0,
-                    risk_fraction=dec.risk_fraction, expires=sig["bar_ts"] + 2 * self.tf_ms,
+                    # placed at the signal candle's close; stays out `entry_wait_candles` candles (as the backtest)
+                    risk_fraction=dec.risk_fraction,
+                    expires=sig["bar_ts"] + (1 + backtest.entry_wait_candles()) * self.tf_ms,
                     limit=pend.get("limit", limit), qty=pend.get("qty", dec.qty))
         day["trades"] += 1
         self.acc.set("day", day)
@@ -652,7 +661,7 @@ class Trader:
             rep = improver.improve(st, self.m.symbols, dopamine=dopamine)
             # one plain report a day: what was tried, what passed, what (usually nothing) changed
             st.set("improve_report", {"ts": now_ms(), **{k: rep.get(k) for k in (
-                "candidates", "dopamine", "search_width", "current", "best_walk_forward", "checked",
+                "candidates", "dopamine", "search_width", "health", "current", "best_walk_forward", "checked",
                 "new_shadows", "shadows_full", "lessons", "edges_refreshed", "shadow_review", "shadow_promoted")}})
             notify(M.improve_report(rep, SHADOW_MIN_DAYS))
         except Exception:

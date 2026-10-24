@@ -62,7 +62,8 @@ def test_weekend_close_and_spread_costs(tmp_path, monkeypatch):
     monkeypatch.setattr(FX, "data_dir", tmp_path)
     (tmp_path / "spreads.json").write_text('{"GBP_JPY": 0.0002}', encoding="utf-8")
     assert FX.costs_for("GBP_JPY")["maker"] == pytest.approx(0.0001)
-    assert FX.costs_for("EUR_USD") == FX.costs                              # not measured -> default
+    assert {k: v for k, v in FX.costs_for("EUR_USD").items() if k != "fill_through"} == FX.costs  # not measured -> default
+    assert FX.costs_for("GBP_JPY")["fill_through"] == pytest.approx(0.0002 * 0.5)   # half the spread
 
 
 def test_risk_ladder_steps():

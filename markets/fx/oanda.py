@@ -38,6 +38,11 @@ class Client:
             if r.status_code == 429 or r.status_code >= 500:   # rate limit / server hiccup: back off
                 time.sleep(0.5 * 2 ** attempt)
                 continue
+            # OANDA's practice API answers a valid token with 401 a few times a day and is fine a
+            # second later (2026-10-21..22); a refused request did nothing, so asking again is safe
+            if r.status_code == 401 and attempt < 2:
+                time.sleep(1.0 + attempt)
+                continue
             if not r.ok:
                 raise OandaError(f"{method} {path} -> {r.status_code}: {r.text[:300]}")
             return r.json()

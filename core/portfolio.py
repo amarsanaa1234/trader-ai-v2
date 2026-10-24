@@ -9,6 +9,7 @@ Same fills, fees, funding, exits and risk_guard as backtest.py.
 import numpy as np
 
 from . import exits, risk_guard
+from .backtest import entry_wait_candles
 from .context import mkt
 from .reward import max_drawdown, strategy_score
 from .strategy import compute
@@ -30,16 +31,18 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
                   "l": df["low"].to_numpy(), "c": df["close"].to_numpy(), "fund": df["hold_cost"].to_numpy(),
                   "sig": f["signal"].to_numpy(), "atr": f["atr"].to_numpy(),
                   "force": np.asarray(m.force_exit(df.index, p), dtype=bool),
-                  "maker": cst["maker"], "taker": cst["taker"], "slip": cst["slippage"]}
+                  "maker": cst["maker"], "taker": cst["taker"], "slip": cst["slippage"],
+                  "through": cst.get("fill_through", 0.0)}
         S[sym]["row"] = {int(t): i for i, t in enumerate(S[sym]["ts"])}
     timeline = sorted({int(t) for s in S.values() for t in s["ts"]
                        if (start_ts is None or t >= start_ts) and (end_ts is None or t < end_ts)})
     maker_entry = m.entry_order == "maker"
     offset = p.get("entry_offset_atr", 0.0) if maker_entry else 0.0
     max_hold = int(p["max_hold_bars"])
+    wait = entry_wait_candles()
 
     equity = peak = start_equity
-    pos, last_close = {}, {}
+    pos, pend, last_close = {}, {}, {}
     day, day_start, halted, trades_today = None, equity, False, 0
     trades, curve, refused = [], [], {}
 
@@ -66,17 +69,22 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
             if i is None or i < 1:
                 continue
             o, h, l, c = s["o"][i], s["h"][i], s["l"][i], s["c"][i]
-            # ---- entry on the previous candle's signal ----
-            if sym not in pos and s["sig"][i - 1] != 0 and not halted:
-                side = int(s["sig"][i - 1])
-                dist = p["stop_atr"] * s["atr"][i - 1]
+            # ---- entry on the previous candle's signal (a limit may wait `wait` candles) ----
+            if sym not in pos and sym not in pend and s["sig"][i - 1] != 0 and not halted:
+                sd = int(s["sig"][i - 1])
+                pend[sym] = {"side": sd, "dist": p["stop_atr"] * s["atr"][i - 1],
+                             "limit": s["c"][i - 1] - sd * offset * s["atr"][i - 1], "until": i + wait - 1}
+            if sym not in pos and sym in pend:
+                side, dist = pend[sym]["side"], pend[sym]["dist"]
                 if maker_entry:
-                    limit = s["c"][i - 1] - side * offset * s["atr"][i - 1]
-                    limit = min(limit, o) if side == 1 else max(limit, o)
-                    filled = l <= limit if side == 1 else h >= limit
+                    limit = min(pend[sym]["limit"], o) if side == 1 else max(pend[sym]["limit"], o)
+                    th = s["through"]
+                    filled = l <= limit * (1 - th) if side == 1 else h >= limit * (1 + th)
                     entry, fee_rate = limit, s["maker"]
                 else:
                     filled, entry, fee_rate = True, o * (1 + s["slip"] * side), s["taker"]
+                if filled or i >= pend[sym]["until"] or halted:
+                    pend.pop(sym)
                 if filled and np.isfinite(dist) and dist > 0:
                     legs = [(k, q["side"], q["qty"] * q["dist"] / equity) for k, q in pos.items()]
                     dec = risk_guard.check_entry(
