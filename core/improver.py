@@ -192,6 +192,9 @@ def improve(st, symbols, dopamine: float = 0.0, seed: int | None = None) -> dict
     else:
         for wf, v, cand in passed[:2]:
             s = shadow.add(st, cand, {"walk_forward": wf, "vault": v})
+            if s is None:       # every place taken by a shadow still being tested
+                report["shadows_full"] = report.get("shadows_full", 0) + 1
+                continue
             report["new_shadows"].append({"id": s["id"], "walk_forward": wf, "vault": v})
         report["promoted"] = False
         # keep the live pattern edges fresh if that alone doesn't hurt the vault

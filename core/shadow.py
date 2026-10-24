@@ -14,7 +14,7 @@ from .strategy import clamp_params, load_params, save_params
 log = logging.getLogger(__name__)
 DAY_MS = 86_400_000
 MAX_SHADOWS = 6
-MAX_AGE_DAYS = 45
+MAX_AGE_DAYS = SHADOW_MIN_DAYS + 30   # a shadow gets a month past the minimum to collect enough trades
 MIN_FORWARD_TRADES = 6
 PROMOTE_MARGIN = 0.3
 
@@ -23,11 +23,14 @@ def get(st) -> list[dict]:
     return st.get("shadows", [])
 
 
-def add(st, params: dict, metrics: dict) -> dict:
+def add(st, params: dict, metrics: dict) -> dict | None:
+    """None when all places are taken: a newer candidate never pushes out one that is
+    still running its forward test (with a month-long test it would never finish)."""
     shadows = get(st)
+    if len(shadows) >= MAX_SHADOWS:
+        return None
     s = {"id": uuid.uuid4().hex[:8], "created": now_ms(), "params": params, "backtest": metrics}
     shadows.append(s)
-    shadows = shadows[-MAX_SHADOWS:]
     st.set("shadows", shadows)
     return s
 

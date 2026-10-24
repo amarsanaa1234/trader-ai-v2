@@ -29,7 +29,7 @@ CRYPTOPANIC_TOKEN = os.getenv("CRYPTOPANIC_TOKEN", "").strip()
 # Small local models write poor Mongolian, so with Ollama reviews default to English.
 REVIEW_LANG = os.getenv("REVIEW_LANG", "Mongolian (Cyrillic)" if NEWS_AI == "claude" else "English").strip()
 
-SHADOW_MIN_DAYS = float(os.getenv("SHADOW_MIN_DAYS", "10"))
+SHADOW_MIN_DAYS = float(os.getenv("SHADOW_MIN_DAYS", "30"))   # owner, 2026-10-24: a month (was 10 days)
 BLACKOUT_BEFORE_MIN = int(os.getenv("BLACKOUT_BEFORE_MIN", "60"))
 BLACKOUT_AFTER_MIN = int(os.getenv("BLACKOUT_AFTER_MIN", "60"))
 DASHBOARD_PORT = int(os.getenv("DASHBOARD_PORT", "8765"))

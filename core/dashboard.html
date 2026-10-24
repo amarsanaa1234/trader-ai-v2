@@ -263,7 +263,7 @@ function shadowStatus(s, r) {
   return f.return >= l.return ? ["🟢 Тэргүүлж байна", "up"] : ["🔴 Хоцорч байна", "down"];
 }
 function renderShadows(d) {
-  const r = d.shadow_rules || {min_days: 10, min_trades: 6, margin: 0.3, max_age_days: 45};
+  const r = d.shadow_rules || {min_days: 30, min_trades: 6, margin: 0.3, max_age_days: 60};
   $("sh-rules").textContent = `${r.min_days}+ хоног туршигдсан, ${r.min_trades}+ арилжаа хийсэн, оноо нь одоогийн тохиргооноос ${r.margin}-аар илүү, өгөөж нь эерэг байх.`;
   $("sh-max").textContent = r.max_age_days;
   if (!d.shadows.length) return '<div class="empty">Одоогоор shadow алга</div>';

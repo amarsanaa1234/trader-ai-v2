@@ -653,7 +653,7 @@ class Trader:
             # one plain report a day: what was tried, what passed, what (usually nothing) changed
             st.set("improve_report", {"ts": now_ms(), **{k: rep.get(k) for k in (
                 "candidates", "dopamine", "search_width", "current", "best_walk_forward", "checked",
-                "new_shadows", "lessons", "edges_refreshed", "shadow_review", "shadow_promoted")}})
+                "new_shadows", "shadows_full", "lessons", "edges_refreshed", "shadow_review", "shadow_promoted")}})
             notify(M.improve_report(rep, SHADOW_MIN_DAYS))
         except Exception:
             log.exception("Өөрийгөө сайжруулах ажил амжилтгүй")

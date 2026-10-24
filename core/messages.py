@@ -187,6 +187,8 @@ def improve_report(rep: dict, min_shadow_days: int) -> str:
     for s in rep.get("new_shadows", []):
         lines.append(f"🧪 New shadow {s['id']} (held-back test {s['vault'].get('return', 0):+.1%}, "
                      f"{s['vault'].get('trades', 0)} trades) starts trading on paper next to live")
+    if rep.get("shadows_full"):
+        lines.append(f"⏳ {rep['shadows_full']} more passed, but all shadow places are taken by tests still running")
     for les in rep.get("lessons") or []:
         for b in les:
             lines.append(f"📚 Lesson: stop entering when '{b['tag']}' ({b['trades']} past trades, "
