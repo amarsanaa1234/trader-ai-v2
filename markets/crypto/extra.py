@@ -10,9 +10,12 @@ S&P 500 and the dollar come from the FX market's own database (OANDA), which
 the FX bot keeps up to date; if it is missing these sources are simply 0.
 """
 import sqlite3
+import time
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
+import requests
 
 from core.settings import DATA_ROOT
 
@@ -94,3 +97,39 @@ def usd_move(index: pd.Index, step_ms: int) -> np.ndarray:
     m = pd.concat(parts, axis=1).mean(axis=1)
     m.index = m.index + 4 * HOUR
     return np.nan_to_num(_known_at(m.dropna(), index.to_numpy() + step_ms, max_age_ms=12 * HOUR))
+
+
+# ---------------- Coinbase prices for the premium source ----------------
+def _cb_table(st: Storage):
+    st.db.execute("CREATE TABLE IF NOT EXISTS coinbase_candles "
+                  "(product TEXT, ts INTEGER, close REAL, volume REAL, PRIMARY KEY(product, ts))")
+
+
+def sync_coinbase(st: Storage, days_back: int = 730) -> int:
+    """Hourly Coinbase BTC-USD / ETH-USD closes (public API, 300 candles per call)."""
+    _cb_table(st)
+    added = 0
+    end = int(time.time()) // 3600 * 3600
+    for coin in ("BTC", "ETH"):
+        product = f"{coin}-USD"
+        last = st.db.execute("SELECT MAX(ts) FROM coinbase_candles WHERE product=?", (product,)).fetchone()[0]
+        t = (last // 1000 + 3600) if last else end - days_back * 86400
+        while t < end:
+            t2 = min(t + 300 * 3600, end)
+            r = requests.get(f"https://api.exchange.coinbase.com/products/{product}/candles",
+                             params={"granularity": 3600,
+                                     "start": datetime.fromtimestamp(t, timezone.utc).isoformat(),
+                                     "end": datetime.fromtimestamp(t2, timezone.utc).isoformat()},
+                             headers={"User-Agent": "crypto_ai"}, timeout=20)
+            if r.status_code == 429:
+                time.sleep(2)
+                continue
+            r.raise_for_status()
+            rows = [(product, c[0] * 1000, c[4], c[5]) for c in r.json()]
+            st.db.executemany("INSERT OR REPLACE INTO coinbase_candles VALUES (?, ?, ?, ?)", rows)
+            st.db.commit()  # commit every chunk: never hold the shared DB lock while downloading
+            added += len(rows)
+            t = t2
+            time.sleep(0.2)
+    st.db.commit()
+    return added

@@ -103,7 +103,7 @@ class Crypto(Market):
         data.sync_all(st, symbols or self.symbols, self.timeframe, self.history_days)
 
     def sync_symbol(self, st, symbol: str) -> None:
-        # 1h is always kept fresh too: Strategy 2 and the Coinbase premium use hourly prices
+        # 1h is always kept fresh too: the Coinbase premium uses hourly prices
         for tf in {self.timeframe, "1h"}:
             data.sync_candles(st, symbol, tf, self.history_days)
         data.sync_funding(st, symbol, self.history_days)
@@ -112,9 +112,9 @@ class Crypto(Market):
         for s in self.symbols:
             data.sync_positioning(st, s)
         data.sync_fng(st)
-        try:   # Coinbase prices for the premium source (the Strategy 2 service also keeps them fresh)
-            from . import strategy2
-            strategy2.sync_coinbase(st)
+        try:   # Coinbase prices for the premium source
+            from . import extra
+            extra.sync_coinbase(st)
         except Exception as e:
             log.warning("Coinbase: %s", e)
 
@@ -147,9 +147,6 @@ class Crypto(Market):
         from . import carry
         carry.close(trader.st, trader.broker, carry_row, reason, user=trader.acc.name)
 
-    def dashboard_extras(self, st) -> dict:
-        from . import strategy2
-        return {"brain2": strategy2.dashboard_panel(st)}
 
     def commands(self) -> dict:
         from . import cli

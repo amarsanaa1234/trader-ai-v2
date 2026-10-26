@@ -1,5 +1,5 @@
 """FX fixes from the 2026-10-25 audit: limit waits 2 candles, fills need the spread traded
-through, 401 is retried, weak live settings are flagged, carry-ranking weights."""
+through, 401 is retried, weak live settings are flagged."""
 import os
 import tempfile
 from types import SimpleNamespace
@@ -60,15 +60,3 @@ def test_weak_settings_are_flagged_and_cleared():
     assert h["weak"] and st.get("settings_health")["weak"]
     assert not improver.settings_health(st, {"positive_folds": 3}, {"return": -0.01})["weak"]
     assert not improver.settings_health(st, {"positive_folds": 1}, {"return": 0.01})["weak"]
-
-
-def test_carry_ranking_longs_high_rates_shorts_low():
-    from markets.fx import strategy2 as s2
-    idx = pd.date_range("2026-01-01", periods=10, freq="D", tz="UTC")
-    rates = {"USD": 4.0, "EUR": 2.0, "JPY": 0.5, "GBP": 4.5, "AUD": 4.2, "CAD": 2.5, "CHF": 0.0, "NZD": 3.0}
-    rt = pd.DataFrame({c: v for c, v in rates.items()}, index=idx)
-    lp = pd.DataFrame(0.0, index=idx, columns=s2.CCYS)
-    w = s2.weights(lp, rt, pd.Series(15.0, index=idx))
-    last = w.iloc[-1]
-    assert set(last[last > 0].index) == {"GBP", "AUD", "USD"} and set(last[last < 0].index) == {"CHF", "JPY", "EUR"}
-    assert abs(last.sum()) < 1e-12

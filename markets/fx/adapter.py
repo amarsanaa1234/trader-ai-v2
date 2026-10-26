@@ -211,19 +211,6 @@ class FX(Market):
                 data.sync_candles(trader.st, s, self.timeframe, self.history_days)
             except Exception:
                 pass
-        if self.name == "fx":       # FX Strategy 2: paper carry ranking next to the bot (not commodities)
-            from . import strategy2
-            try:
-                strategy2.step(trader.st)
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning("FX Strategy 2: %s", e)
-
-    def dashboard_extras(self, st) -> dict:
-        if self.name != "fx":
-            return {}
-        from . import strategy2
-        return {"brain2": strategy2.dashboard_panel(st)}
 
     # ---------- execution ----------
     def make_broker(self, st, account):
