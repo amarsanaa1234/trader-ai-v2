@@ -24,7 +24,7 @@ CORE_SOURCES = ("trend", "momentum", "mean_rev", "breakout", "macd", "news", "pa
 # the shadow test may not drift towards long-term trading:
 DEFAULT_ENTRY_THRESHOLD = 1.5  # the entry score threshold is never tuned (was 0.6..2.5); a market
                                # fixes its own in config.yaml entry_threshold (crypto 1.5, FX 2, commodities 2)
-MAX_HOLD_DAYS = 7              # a trade is closed after at most 7 days, whatever the timeframe
+MAX_HOLD_DAYS = 7              # a trade is closed after at most 7 days (a market may set fewer: max_hold_days)
 # (and candles of 4h or shorter: markets/base.py Market.timeframe refuses daily / weekly)
 
 CORE_PARAMS = {
@@ -108,8 +108,8 @@ def clamp_params(p: dict) -> dict:
         out["ema_fast"] = max(space["ema_fast"][0], out["ema_slow"] // 3)
     out["adx_range"] = min(out["adx_range"], out["adx_trend"] - 2)
     # short-term only: hold at most MAX_HOLD_DAYS in candles of this market's timeframe
-    out["max_hold_bars"] = int(min(out["max_hold_bars"], max(space["max_hold_bars"][0],
-                                                             MAX_HOLD_DAYS * 86_400_000 // mkt().tf_ms())))
+    days = min(MAX_HOLD_DAYS, float((getattr(mkt(), "cfg", None) or {}).get("max_hold_days", MAX_HOLD_DAYS)))
+    out["max_hold_bars"] = int(min(out["max_hold_bars"], max(space["max_hold_bars"][0], days * 86_400_000 // mkt().tf_ms())))
     if (getattr(mkt(), "cfg", None) or {}).get("use_news") is False:
         out["w_news"] = 0.0   # news has no history to backtest, so the market can switch it off
     return out

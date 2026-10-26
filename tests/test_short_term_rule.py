@@ -35,3 +35,15 @@ def test_daily_candles_are_refused(monkeypatch):
         _ = markets.get("crypto").timeframe
     monkeypatch.setenv("CRYPTO_TIMEFRAME", "4h")
     assert markets.get("crypto").timeframe == "4h"
+
+
+def test_commodities_hold_five_days_and_risk_one_percent():
+    from core import risk_guard
+    prev = mkt()
+    activate(markets.get("commodities"))
+    try:
+        p = clamp_params({**default_params(), "max_hold_bars": 168})
+        assert p["max_hold_bars"] * mkt().tf_ms() == 5 * 86_400_000
+        assert risk_guard.market_risk_cap() == 0.01
+    finally:
+        activate(prev)
