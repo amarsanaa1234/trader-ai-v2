@@ -73,6 +73,19 @@ class Commodities(FX):
         super().daily_sync(st)
         curve.sync(st, self.symbols)
 
+    def hourly(self, trader, equity: float, day: dict) -> None:
+        super().hourly(trader, equity, day)
+        from . import strategy2     # Strategy 2: paper futures-curve carry ranking next to the bot
+        try:
+            strategy2.step(trader.st)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Commodities Strategy 2: %s", e)
+
+    def dashboard_extras(self, st) -> dict:
+        from . import strategy2
+        return {"brain2": strategy2.dashboard_panel(st)}
+
     def sync(self, st, symbols=None) -> None:
         super().sync(st, symbols)
         curve.sync(st, symbols or self.symbols)

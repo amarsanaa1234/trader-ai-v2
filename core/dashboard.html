@@ -447,16 +447,17 @@ function renderBrain2(d) {
 function renderCarry(b, since) {
   // FX Strategy 2: currencies ranked by interest rate, 3 highest long / 3 lowest short, weekly
   $("brain2-kpi").innerHTML = [
-    ["🧠 Стратеги 2 (carry)", pct(b.return), cls(b.return)],
+    [b.metric_label ? "🧠 Стратеги 2 (curve carry)" : "🧠 Стратеги 2 (carry)", pct(b.return), cls(b.return)],
     ["🤖 Demo бот (ижил хугацаа)", pct(b.s1_return), cls(b.s1_return)],
     ["Стратеги 2-ын данс", fmt(b.equity) + " " + (b.currency || ""), ""],
     ["Нийт байрлал", (b.exposure * 100).toFixed(0) + "%" + (b.fear ? " · 😨 айдас: гарсан" : ""), ""],
   ].map(([l, v, c]) => `<div class="card kpi"><div class="label">${l}</div><div class="value ${c}">${v}</div></div>`).join("");
   const rows = Object.entries(b.coins).sort((a, c) => (c[1].rate ?? -99) - (a[1].rate ?? -99));
-  $("brain2").innerHTML = `<table><thead><tr><th>Валют</th><th>Хүү</th><th>Жин</th></tr></thead><tbody>` +
+  const what = b.metric_label ? "Хэрэглүүр" : "Валют";
+  $("brain2").innerHTML = `<table><thead><tr><th>${what}</th><th>${b.metric_label || "Хүү"}</th><th>Жин</th></tr></thead><tbody>` +
     rows.map(([c, p]) => `<tr><td>${c}</td><td>${p.rate == null ? "—" : p.rate.toFixed(2) + "%"}</td>
       <td class="${cls(p.weight)}">${(p.weight * 100).toFixed(1)}%</td></tr>`).join("") +
-    `</tbody></table><div class="sub" style="margin-top:6px">${since}-аас хойш · долоо хоног бүр хүү хамгийн өндөр 3 валютыг long, хамгийн бага 3-ыг short барина (paper, захиалга тавихгүй)</div>`;
+    `</tbody></table><div class="sub" style="margin-top:6px">${since}-аас хойш · ${b.note || "долоо хоног бүр хүү хамгийн өндөр 3 валютыг long, хамгийн бага 3-ыг short барина (paper, захиалга тавихгүй)"}</div>`;
   drawCmp(b);
 }
 
