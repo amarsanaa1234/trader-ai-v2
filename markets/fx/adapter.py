@@ -46,7 +46,9 @@ class FX(Market):
         # so their weight is kept small until more history exists (audit 2026-10-25; was -1.5..1.0)
         "w_crowd": (-0.6, 0.6, False), "w_usd": (-1.0, 1.5, False), "usd_scale": (0.002, 0.01, False),
         "w_tsmom": (-1.0, 1.5, False), "tsmom_days": (10, 120, True),
-        "w_carry": (-1.0, 1.5, False), "w_rates": (-1.0, 1.5, False), "w_cot": (-1.5, 1.0, False),
+        # COT contrarian only: going against extreme speculators paid in 10/10 years and 7/7
+        # currencies (tools/cot_test.py, 2026-10-26); following them (live was +0.63) did not
+        "w_carry": (-1.0, 1.5, False), "w_rates": (-1.0, 1.5, False), "w_cot": (-1.5, 0.0, False),
         "w_xasset": (-1.0, 1.5, False), "w_session": (-1.0, 1.5, False),
         "w_orders": (-0.5, 0.5, False), "w_yields": (-1.0, 1.5, False), "w_month_end": (-1.0, 1.0, False),
         "adr_block": (0.6, 2.0, False), "weekend_close": (0.0, 1.0, False),

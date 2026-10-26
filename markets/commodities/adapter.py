@@ -43,7 +43,7 @@ class Commodities(FX):
         "w_curve": (-1.0, 1.5, False), "w_curve_chg": (-1.0, 1.5, False),
         "curve_scale": (0.05, 0.5, False), "swap_block": (0.05, 1.0, False),
         # FX narrowed these two on 2026-10-25; commodities keep their own range (owner asked FX only)
-        "w_crowd": (-1.5, 1.0, False), "w_orders": (-1.0, 1.0, False),
+        "w_crowd": (-1.5, 1.0, False), "w_orders": (-1.0, 1.0, False), "w_cot": (-1.5, 1.0, False),
     }
     rule_columns = ("long_pct", "usd_mom", "cot_net", "xasset", "session", "carry")
     rule_help = ("long_pct (% of OANDA clients long, 0-100; gold only), "
