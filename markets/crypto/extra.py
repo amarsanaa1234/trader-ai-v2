@@ -18,6 +18,7 @@ import pandas as pd
 import requests
 
 from core.settings import DATA_ROOT
+from core.storage import Storage
 
 HOUR = 3_600_000
 DAY = 24 * HOUR

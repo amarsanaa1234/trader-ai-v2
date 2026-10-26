@@ -29,3 +29,14 @@ def test_timeframes():
     assert tf_to_ms("1d") == 86_400_000
     with pytest.raises(ValueError):
         tf_to_ms("1y")
+
+
+def test_every_market_module_imports():
+    """A missing import inside a market package once stopped the crypto bot loading candles
+    (2026-10-26: Storage in markets/crypto/extra.py), so import every module of every market."""
+    import importlib
+    import pkgutil
+    for name in markets.AVAILABLE:
+        pkg = importlib.import_module(f"markets.{name}")
+        for mod in pkgutil.iter_modules(pkg.__path__):
+            importlib.import_module(f"markets.{name}.{mod.name}")
