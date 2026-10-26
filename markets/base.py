@@ -64,7 +64,11 @@ class Market:
 
     @property
     def timeframe(self) -> str:
-        return self.env("timeframe") or self.cfg.get("timeframe", "1h")
+        tf = self.env("timeframe") or self.cfg.get("timeframe", "1h")
+        # owner rule 2026-10-26: short-term trading only, never daily / weekly candles
+        if tf_to_ms(tf) > 4 * 3_600_000:
+            raise ValueError(f"{self.name}: timeframe {tf} is longer than 4h; only short-term trading is allowed")
+        return tf
 
     @property
     def history_days(self) -> int:

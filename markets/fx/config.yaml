@@ -22,6 +22,7 @@ history_days: 2920      # 8 years
 book_days: 730          # OANDA crowd history to download (older years: no crowd data)
 book_every_hours: 6
 paper_start_equity: 10000
+entry_threshold: 2.0     # owner, 2026-10-26: fixed, the self-improver never changes it
 entry_order: maker      # limit entry (FX has no maker rebate; the spread is the cost)
 entry_wait_candles: 2   # owner, 2026-10-25: a limit waits 8 hours (2 candles) after it is placed (was 1)
 fill_through_spread: 0.5  # audit 2026-10-25: candles are mid prices, a buy limit fills on the ask, so the

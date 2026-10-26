@@ -20,6 +20,13 @@ from .patterns import pattern_score
 
 CORE_SOURCES = ("trend", "momentum", "mean_rev", "breakout", "macd", "news", "patterns", "library", "htf")
 
+# Owner rule, 2026-10-26: short-term trading only, on every market. The self-improver and
+# the shadow test may not drift towards long-term trading:
+DEFAULT_ENTRY_THRESHOLD = 1.5  # the entry score threshold is never tuned (was 0.6..2.5); a market
+                               # fixes its own in config.yaml entry_threshold (crypto 1.5, FX 2, commodities 2)
+MAX_HOLD_DAYS = 7              # a trade is closed after at most 7 days, whatever the timeframe
+# (and candles of 4h or shorter: markets/base.py Market.timeframe refuses daily / weekly)
+
 CORE_PARAMS = {
     "ema_fast": 50, "ema_slow": 200, "rsi_len": 14, "atr_len": 14, "breakout_len": 24,
     "w_trend": 1.0,       # follow the EMA trend
@@ -30,7 +37,7 @@ CORE_PARAMS = {
     "w_patterns": 0.5,    # chart patterns, each weighted by its measured edge
     "w_library": 0.6,     # vote of backtested strategies from the library
     "pattern_edges": {},  # set by the improver from historical data
-    "entry_threshold": 1.3,
+    "entry_threshold": DEFAULT_ENTRY_THRESHOLD,
     "stop_atr": 2.0,      # stop distance in ATRs
     "tp_r": 2.0,          # take profit at this multiple of the stop distance
     "max_hold_bars": 48,
@@ -59,7 +66,6 @@ CORE_SPACE = {
     "atr_len": (7, 28, True), "breakout_len": (6, 96, True),
     "w_trend": (0.0, 2.0, False), "w_momentum": (-1.0, 1.5, False), "w_breakout": (0.0, 2.0, False),
     "w_macd": (-1.0, 1.5, False), "w_patterns": (0.0, 2.0, False), "w_library": (0.0, 2.0, False),
-    "entry_threshold": (0.6, 2.5, False),
     "stop_atr": (1.0, 4.0, False), "tp_r": (1.0, 4.0, False), "max_hold_bars": (6, 168, True),
     "entry_offset_atr": (0.0, 0.6, False),
     "adx_trend": (20, 40, True), "adx_range": (10, 22, True), "range_trend_scale": (0.0, 1.0, False),
@@ -69,12 +75,18 @@ CORE_SPACE = {
 }
 
 
+def fixed_entry_threshold() -> float:
+    """The market's fixed entry threshold (owner rule 2026-10-26: never tuned)."""
+    return float((getattr(mkt(), "cfg", None) or {}).get("entry_threshold", DEFAULT_ENTRY_THRESHOLD))
+
+
 def default_params() -> dict:
-    return {**CORE_PARAMS, **mkt().default_params}
+    return {**CORE_PARAMS, **mkt().default_params, "entry_threshold": fixed_entry_threshold()}
 
 
 def param_space() -> dict:
-    return {**CORE_SPACE, **mkt().param_space}
+    thr = fixed_entry_threshold()
+    return {**CORE_SPACE, **mkt().param_space, "entry_threshold": (thr, thr, False)}
 
 
 def source_names() -> tuple:
@@ -95,6 +107,9 @@ def clamp_params(p: dict) -> dict:
     if out["ema_fast"] >= out["ema_slow"]:
         out["ema_fast"] = max(space["ema_fast"][0], out["ema_slow"] // 3)
     out["adx_range"] = min(out["adx_range"], out["adx_trend"] - 2)
+    # short-term only: hold at most MAX_HOLD_DAYS in candles of this market's timeframe
+    out["max_hold_bars"] = int(min(out["max_hold_bars"], max(space["max_hold_bars"][0],
+                                                             MAX_HOLD_DAYS * 86_400_000 // mkt().tf_ms())))
     if (getattr(mkt(), "cfg", None) or {}).get("use_news") is False:
         out["w_news"] = 0.0   # news has no history to backtest, so the market can switch it off
     return out

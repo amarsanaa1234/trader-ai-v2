@@ -11,6 +11,7 @@ symbols:
   - SOL/USDT:USDT
 timeframe: 4h            # owner, 2026-10-19 (look-back test: 1h -9.6% vs 4h about -0.2% per 2 months)
 history_days: 730
+entry_threshold: 1.5     # owner, 2026-10-26: fixed, the self-improver never changes it
 entry_order: maker      # maker = post-only limit (0.02%), market = immediate (0.05%)
 paper_start_equity: 1000
 review_reference: BTC/USDT:USDT   # trade reviews compare each trade with what BTC did
