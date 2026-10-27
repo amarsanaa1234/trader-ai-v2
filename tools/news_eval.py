@@ -26,6 +26,10 @@ def main(market_name: str, days: int):
         print(f"{x['hours']:>2} цагийн дараа, {x['subset']:22}: {x['n']:4} мэдээ, зөв чиглэл {x['hit']:.0%}, "
               f"дундаж {x['avg_atr']:+.2f} ATR, t {x['t']:+.1f}")
     print("\n" + r["verdict"])
+    print("\nУрьдчилан бүртгэсэн таамгууд (зөвхөн шинэ мэдээгээр):")
+    for h in r["hypotheses"]:
+        nums = f", зөв {h['hit']:.0%}, дундаж {h['avg_atr']:+.2f} ATR, t {h['t']:+.1f}" if "t" in h else ""
+        print(f"  {h['topic']} → {h['hours']} цаг: {h['n']} мэдээ{nums}  {h['status']}")
 
 
 if __name__ == "__main__":

@@ -683,8 +683,12 @@ class Trader:
         try:
             r = news_eval.evaluate(self.st)
             self.st.set("news_eval", r)
+            ideas = "".join(f"\n• {h['topic']} → {h['hours']}h: {h['n']} headlines"
+                            + (f", {h['hit']:.0%} right, t {h['t']:+.1f}" if "t" in h else "")
+                            for h in r.get("hypotheses") or [])
             notify(f"📰 NEWS CHECK · {self.m.label}\n\n{r['scored']} scored headlines in {r['days']} days.\n"
-                   "Results are on the web report page.")
+                   + (f"\nIdeas registered in advance (new headlines only):{ideas}\n" if ideas else "")
+                   + "Results are on the web report page.")
         except Exception as e:
             log.warning("Мэдээний шалгалт: %s", e)
 

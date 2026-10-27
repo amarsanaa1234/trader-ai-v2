@@ -281,7 +281,24 @@ def news_check_html(st) -> str:
              f"<th>t</th></tr></thead><tbody>{rows}</tbody></table>") if rows else ""
     return head + (f"<div class='card'><b>{esc(r['verdict'])}</b><br><span class='muted'>{when} · сүүлийн {r['days']} хоног · "
                    f"{r['scored']} үнэлгээ · {esc(', '.join(r.get('models') or []))}</span>{table}"
-                   "<p class='muted'>Зөв чиглэл &gt; 55% ба t &gt; 2 бол мэдээ ашигтай байж магадгүй.</p></div>")
+                   "<p class='muted'>Зөв чиглэл &gt; 55% ба t &gt; 2 бол мэдээ ашигтай байж магадгүй.</p></div>"
+                   + hypotheses_html(r.get("hypotheses") or []))
+
+
+def hypotheses_html(hyps) -> str:
+    """The news ideas written down in advance (core/news_topics.py), judged only on newer headlines."""
+    if not hyps:
+        return ""
+    rows = "".join(
+        f"<tr><td>{esc(h['topic'])}</td><td>{h['hours']} цаг</td><td>{h['n']}</td>"
+        f"<td>{format(h['hit'], '.0%') if 'hit' in h else '–'}</td>"
+        f"<td>{format(h['avg_atr'], '+.2f') if 'avg_atr' in h else '–'}</td>"
+        f"<td>{format(h['t'], '+.1f') if 't' in h else '–'}</td><td>{esc(h['status'])}</td></tr>" for h in hyps)
+    return ("<div class='card'><b>🧪 Урьдчилан бүртгэсэн 2 таамаг</b><br>"
+            f"<span class='muted'>{esc(hyps[0]['since'])}-нээс хойшхи шинэ мэдээгээр л шалгана "
+            "(хуучин өгөгдлөөр сонгоод тэр өгөгдлөөрөө шалгавал хэт сайн харагддаг).</span>"
+            "<table><thead><tr><th>Сэдэв</th><th>Хугацаа</th><th>Тоо</th><th>Зөв</th><th>Дундаж (ATR)</th>"
+            f"<th>t</th><th>Дүгнэлт</th></tr></thead><tbody>{rows}</tbody></table></div>")
 
 
 # ---------------- settings ----------------

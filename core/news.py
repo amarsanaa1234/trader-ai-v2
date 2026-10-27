@@ -16,7 +16,7 @@ import time
 import feedparser
 import requests
 
-from . import ai
+from . import ai, news_topics
 from .context import mkt
 from .settings import CRYPTOPANIC_TOKEN, base_asset
 from .storage import Storage, now_ms
@@ -113,6 +113,10 @@ def score_news(st: Storage) -> int:
     if not ai.enabled():
         return 0
     news = st.unscored_news(now_ms() - 24 * HOUR_MS, limit=30)
+    opinion = [n["id"] for n in news if news_topics.skip(n["title"])]   # forecasts/opinion: mostly wrong (news_topics)
+    if opinion:
+        st.mark_scored(opinion)
+        news = [n for n in news if n["id"] not in set(opinion)]
     if not news:
         return 0
     assets = sorted({base_asset(s) for s in mkt().symbols}) + ["MARKET"]
@@ -135,7 +139,7 @@ def score_news(st: Storage) -> int:
         strength = min(max(float(it.get("strength", 0)), 0.0), 1.0)
         score = SENTIMENT_SIGN.get(it.get("sentiment"), 0.0) * strength
         rows.append((news[idx]["ts"], it["asset"], score, strength, str(it.get("reason", ""))[:200],
-                     scored_at, ai_name))
+                     scored_at, ai_name, news[idx]["id"]))
     st.insert_sentiment(rows)
     st.mark_scored([n["id"] for n in news])
     return len(rows)
