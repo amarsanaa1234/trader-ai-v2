@@ -110,6 +110,14 @@
     </div>
   </div>
 
+  <div class="card row" id="tfc-card" hidden><div>
+    <div class="head"><h2>🧠 2 дахь тархи: 1 цагийн лаа (зөвхөн харьцуулалт)</h2><button class="q" data-help="h-tfc" aria-label="Тайлбар">?</button></div>
+    <div id="tfc-kpi" class="grid" style="margin:6px 0 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))"></div>
+    <div class="chart-box" style="height:200px"><canvas id="tfc-chart"></canvas></div>
+    <div class="scroll" id="tfc-open" style="margin-top:10px"></div>
+    <div class="scroll" id="tfc-trades" style="margin-top:10px"></div>
+  </div></div>
+
   <div class="card row"><div>
     <div class="head"><h2>Сүүлийн арилжаанууд</h2>
       <div class="pager" id="trades-pager"></div></div>
@@ -137,6 +145,12 @@
   </div>
 
   <div id="helps" hidden>
+    <div class="help" id="h-tfc">
+      <p><b>2 дахь тархи гэж юу вэ?</b> Яг одоогийн тохиргоогоор <b>1 цагийн лаан</b> дээр арилжаа хийж байгаа мэт ажилладаг <b>paper бот</b>. Том зургийг (trend) <b>4 цаг ба 1 өдрийн</b> лаанаас авна. Барих хугацаа хоногоор ижил.</p>
+      <p>Цаг бүр лаа хаагдахад шийдвэр гаргаж арилжаа нээж, stop, хагас авах, TP, хугацааны хязгаар, өдрийн алдагдлын хязгаарыг бодит бот шиг хэрэгжүүлнэ. Хийсэн арилжаа нь дараа нь өөрчлөгдөхгүй.</p>
+      <p><b>Захиалга тавихгүй</b>, хэний ч дансанд хүрэхгүй. Шимтгэл, spread, swap-ийг тооцно. 10,000-аас эхэлсэн.</p>
+      <p>Харьцуулахын тулд ижил paper ботыг ижил өдрөөс <b id="tfc-own">4ц</b> лаан дээр бас ажиллуулдаг. "Demo данс" нь таны дансны бодит үр дүн.</p>
+    </div>
     <div class="help" id="h-events">
       <p>АНУ-ын томоохон эдийн засгийн мэдээ (инфляци, ажлын байр, Fed-ийн хүүгийн шийдвэр гэх мэт) гарах үед крипто зах зээл <b>секундын дотор</b> огцом хөдөлж болдог.</p>
       <p>Тиймээс бот ийм мэдээнээс <b id="bo-before">60</b> минутын өмнөөс <b id="bo-after">60</b> минутын дараа хүртэл <b>шинэ арилжаа нээхгүй</b>. Нээлттэй арилжаанууд биржийн stop/TP-ээрээ хамгаалагдсан хэвээр байна.</p>
@@ -403,6 +417,52 @@ function renderTrades(d) {
 }
 
 // ---- brain 2 (strategy 2 shadow) ----
+// ---- brain 2: the live settings on 1h candles (comparison only) ----
+let tfcChart;
+function renderTfCompare(d) {
+  const c = d.tf_compare;
+  $("tfc-card").hidden = !c;
+  if (!c) return;
+  const own = (c.own_tf || "4h").replace("h", "ц");
+  $("tfc-own").textContent = own;
+  const since = new Date(c.start).toLocaleDateString([], {month: "numeric", day: "numeric"});
+  const k = (label, r) => [label, r ? pct(r.return) : "…", r ? cls(r.return) : "",
+    r ? `${r.n_trades} арилжаа · дундаж ${fmt(r.avg_r)}R · уналт ${pct(r.max_dd)}` : "бодогдож байна"];
+  $("tfc-kpi").innerHTML = [k("🧠 1 цагийн лаа", c.small), k(`📊 ${own} лаа (ижил paper бот)`, c.own),
+    ["🤖 Demo данс (бодит)", c.real == null ? "–" : pct(c.real), cls(c.real), "таны дансны бодит өөрчлөлт"]]
+    .map(([l, v, cl, sub]) => `<div class="card kpi"><div class="label">${l}</div><div class="value ${cl}">${v}</div><div class="sub">${sub}</div></div>`).join("");
+  const op = c.small?.open || [];
+  $("tfc-open").innerHTML = op.length ? `<table><thead><tr><th>Нээлттэй (1ц)</th><th>Орсон</th><th>Stop</th><th>TP</th><th>Одоо</th></tr></thead><tbody>` +
+    op.map(q => `<tr><td>${esc(coin(q.symbol))} <span class="sub">${q.side}</span></td><td>${fmtp(q.entry)}</td>
+      <td>${fmtp(q.stop)}</td><td>${fmtp(q.tp)}</td><td class="${cls(q.r_now)}">${fmt(q.r_now)}R</td></tr>`).join("") + `</tbody></table>`
+    : `<div class="empty">1 цагийн тархид одоо нээлттэй арилжаа алга</div>`;
+  const rows = (c.small?.trades || []).slice(-15).reverse();
+  $("tfc-trades").innerHTML = rows.length ? `<table><thead><tr><th>Хаагдсан</th><th>Хэрэглүүр</th><th>R</th><th>Шалтгаан</th></tr></thead><tbody>` +
+    rows.map(t => `<tr><td>${new Date(t.ts).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}</td>
+      <td>${esc(coin(t.symbol))} <span class="sub">${t.side}</span></td><td class="${cls(t.r)}">${fmt(t.r)}R</td>
+      <td>${REASON[t.reason] || esc(t.reason)}</td></tr>`).join("") +
+    `</tbody></table><div class="sub" style="margin-top:6px">${since}-аас хойш · 1 цагийн тархины сүүлийн арилжаанууд (paper, захиалга тавиагүй)</div>`
+    : `<div class="empty">${since}-аас хойш 1 цагийн тархи хараахан арилжаа хаагаагүй байна</div>`;
+  const css = getComputedStyle(document.documentElement);
+  const accent = css.getPropertyValue("--accent").trim(), muted = css.getPropertyValue("--muted").trim(),
+        line = css.getPropertyValue("--line").trim(), up = css.getPropertyValue("--up").trim();
+  const ds = (r) => (r?.curve || []).map(([t, v]) => ({x: t, y: v * 100}));
+  const datasets = [
+    {label: "🧠 1 цаг", data: ds(c.small), borderColor: up, borderWidth: 2, pointRadius: 0},
+    {label: `📊 ${own}`, data: ds(c.own), borderColor: accent, borderWidth: 2, pointRadius: 0},
+  ];
+  if (tfcChart) { tfcChart.data.datasets = datasets; tfcChart.update("none"); return; }
+  tfcChart = new Chart($("tfc-chart"), {
+    type: "line", data: {datasets},
+    options: { responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+      plugins: { legend: { labels: { color: muted, boxWidth: 12 } },
+                 tooltip: { callbacks: { label: (q) => `${q.dataset.label}: ${q.parsed.y.toFixed(2)}%` } } },
+      scales: { x: { type: "linear", ticks: { color: muted, maxTicksLimit: 6,
+                       callback: (v) => new Date(v).toLocaleDateString([], {month: "numeric", day: "numeric"}) }, grid: { display: false } },
+                y: { ticks: { color: muted, callback: (v) => v + "%" }, grid: { color: line } } } }
+  });
+}
+
 let chart;
 function drawChart(hist) {
   const css = getComputedStyle(document.documentElement);
@@ -473,6 +533,7 @@ async function load() {
   $("events").innerHTML = renderEvents(d);
 
   $("trades").innerHTML = renderTrades(d);
+  try { renderTfCompare(d); } catch (e) { console.error(e); }
 
   $("shadows").innerHTML = renderShadows(d);
 

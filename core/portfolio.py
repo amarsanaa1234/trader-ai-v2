@@ -19,7 +19,10 @@ DAY_MS = 86_400_000
 
 def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None = None,
         start_equity: float = 10_000.0, feats: dict | None = None, risk_per_trade: float | None = None,
-        with_curve: bool = False) -> dict:
+        with_curve: bool = False, resume: dict | None = None) -> dict:
+    """resume: the "state" a previous run returned (positions, pending entries, equity,
+    day limits). The run then carries on from there, candle by candle, the way the
+    live bot would (used by the paper bot core/brain2.py)."""
     m = mkt()
     S = {}
     for sym, df in frames.items():
@@ -45,6 +48,16 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
     pos, pend, last_close = {}, {}, {}
     day, day_start, halted, trades_today = None, equity, False, 0
     trades, curve, refused = [], [], {}
+    if resume:
+        equity, peak, last_close = resume["equity"], resume["peak"], dict(resume["last_close"])
+        day, day_start, halted, trades_today = (resume["day"], resume["day_start"], resume["halted"],
+                                                resume["trades_today"])
+        for sym, q in resume["pos"].items():
+            if sym in S:
+                pos[sym] = {**{k: v for k, v in q.items() if k != "bar_ts"}, "bar": _row(S[sym], q["bar_ts"])}
+        for sym, q in resume["pend"].items():
+            if sym in S:
+                pend[sym] = {**{k: v for k, v in q.items() if k != "until_ts"}, "until": _row(S[sym], q["until_ts"])}
 
     def close_part(sym, qty, px, fee_rate, reason=None, t=0):
         nonlocal equity
@@ -143,14 +156,49 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
     curve = np.asarray(curve)
     rs = [x["r"] for x in trades]
     dd = max_drawdown(curve) if len(curve) else 0.0
-    extra = {"curve": curve, "times": np.asarray(timeline), "trade_times": [x["ts"] for x in trades]} \
-        if with_curve else {}
+    extra = {"curve": curve, "times": np.asarray(timeline), "trade_times": [x["ts"] for x in trades],
+             "trade_log": trades} if with_curve else {}
+    if resume is not None:
+        extra["state"] = _plain({
+            "equity": equity, "peak": peak, "day": day, "day_start": day_start, "halted": halted,
+            "trades_today": trades_today, "last_close": last_close,
+            "pos": {k: {**{a: b for a, b in q.items() if a != "bar"}, "bar_ts": _ts(S[k], q["bar"])} for k, q in pos.items()},
+            "pend": {k: {**{a: b for a, b in q.items() if a != "until"}, "until_ts": _ts(S[k], q["until"])}
+                     for k, q in pend.items()}})
     return {**extra, "return": round(float(curve[-1] / start_equity - 1), 4) if len(curve) else 0.0,
             "max_dd": round(dd, 4), "trades": len(trades),
             "avg_r": round(float(np.mean(rs)), 3) if rs else 0.0,
             "score": round(strategy_score(rs, dd), 3),
             "per_symbol": {k: sum(1 for x in trades if x["symbol"] == k) for k in frames},
             "refused": dict(sorted(refused.items(), key=lambda x: -x[1])[:5])}
+
+
+def _ts(s: dict, i: int) -> int:
+    """Time of row i; rows past the end are counted forward in candles."""
+    ts, n = s["ts"], len(s["ts"])
+    return int(ts[i]) if i < n else int(ts[-1] + (i - n + 1) * mkt().tf_ms())
+
+
+def _row(s: dict, t: int) -> int:
+    ts = s["ts"]
+    if t > ts[-1]:
+        return len(ts) - 1 + int(-(-(t - ts[-1]) // mkt().tf_ms()))
+    return int(np.searchsorted(ts, t))
+
+
+def _plain(x):
+    """numpy numbers -> plain Python, so the state can be stored as JSON."""
+    if isinstance(x, dict):
+        return {str(k): _plain(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_plain(v) for v in x]
+    if isinstance(x, (np.integer,)):
+        return int(x)
+    if isinstance(x, (np.floating,)):
+        return float(x)
+    if isinstance(x, np.bool_):
+        return bool(x)
+    return x
 
 
 def vault(frames: dict, p: dict) -> dict:

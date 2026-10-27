@@ -8,7 +8,7 @@ import json
 import logging
 import time
 
-from . import events, library, reward, shadow
+from . import brain2, events, library, reward, shadow
 from .context import mkt
 from .settings import BLACKOUT_AFTER_MIN, BLACKOUT_BEFORE_MIN, SHADOW_MIN_DAYS
 from .storage import Storage, now_ms
@@ -90,8 +90,23 @@ def data(user: str) -> dict:
                      # which instruments it actually pauses (FX: only pairs with that currency)
                      "symbols": [s for s in m.symbols if events.blackout(st, symbol=s)]},
         "drift": drift(st, user),
+        "tf_compare": tf_compare(st, mode, user),
         **m.dashboard_extras(st),   # market-specific panels
     }
+
+
+def tf_compare(st: Storage, mode: str, user: str | None) -> dict | None:
+    """Brain 2 (core/brain2.py): the paper bot on 1h vs the same paper bot on the market's
+    own timeframe since the same day, plus this account's real result over that time."""
+    small = st.get(brain2.key(brain2.SMALL_TF))
+    if not small:
+        return None
+    own = st.get(brain2.key(brain2.own_tf(mkt())))
+    hist = st.equity_history(mode, small["start"], user)
+    real = hist[-1]["equity"] / hist[0]["equity"] - 1 if len(hist) > 1 and hist[0]["equity"] else None
+    slim = lambda b: b and {k: v for k, v in b.items() if k not in ("state",)}   # noqa: E731
+    return {"start": small["start"], "own_tf": brain2.own_tf(mkt()), "real": real, "small": slim(small),
+            "own": slim(own)}
 
 
 def summary(user: str) -> dict:

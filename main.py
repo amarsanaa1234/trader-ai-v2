@@ -4,6 +4,7 @@
   python main.py web                     вэб (нэвтрэлт, цэс, хүн бүрийн хуудас), http://127.0.0.1:8765
   python main.py users                   хэрэглэгчид (.env USER<n>_...), тэдний зах зээл, нууц үг
   python main.py user password <нэр>     вэбийн нууц үг тохируулах
+  python main.py brain2                  2 дахь тархи: 1 цагийн лаан дээрх paper бот (зөвхөн харьцуулалт)
 
 Зах зээл тус бүр: python main.py <зах зээл> <команд>
 
@@ -253,6 +254,12 @@ def global_command(args) -> bool:
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
         from core import web
         web.serve()
+        return True
+    if args[:1] == ["brain2"]:
+        # brain 2: the paper bot on 1h candles for every market, comparison only (core/brain2.py)
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+        from core import brain2
+        brain2.run_forever()
         return True
     if args[:1] == ["users"]:
         everyone = users.load_users(markets.AVAILABLE)

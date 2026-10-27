@@ -1,0 +1,18 @@
+[Unit]
+Description=Trader AI v2 · brain 2: paper bot on 1h candles, every market (comparison only, never trades)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=bot
+WorkingDirectory=/opt/trader_ai_v2
+ExecStart=/opt/trader_ai_v2/.venv/bin/python main.py brain2
+Environment=PYTHONUTF8=1
+Restart=always
+RestartSec=60
+# the real bots always come first
+Nice=19
+CPUWeight=20
+
+[Install]
+WantedBy=multi-user.target
