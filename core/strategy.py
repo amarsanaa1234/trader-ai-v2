@@ -133,14 +133,40 @@ def vault_score() -> float:
     return float(v.get("score", -99.0))
 
 
+EDGES_NOTE = "pattern edges refreshed"
+
+
+def settings_since() -> int:
+    """When the live settings last really changed (ms). A pattern-edge refresh keeps the same
+    settings, so it does not count (2026-11-09 audit: it rewrote the file daily, which reset the
+    live-vs-backtest check every day so it could never fire). Files written before this field
+    existed: the newest saved version whose note is not an edge refresh."""
+    path = mkt().params_path
+    if not path.exists():
+        return 0
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("settings_since"):
+        return int(data["settings_since"])
+    versions = [data] + [json.loads(p.read_text(encoding="utf-8"))
+                         for p in sorted(mkt().params_history_dir.glob("params_*.json"), reverse=True)]
+    for v in sorted(versions, key=lambda v: v.get("updated_utc", ""), reverse=True):
+        if v.get("note") != EDGES_NOTE and v.get("updated_utc"):
+            return int(datetime.strptime(v["updated_utc"], "%Y%m%d_%H%M%S")
+                       .replace(tzinfo=timezone.utc).timestamp() * 1000)
+    return int(path.stat().st_mtime * 1000)
+
+
 def save_params(params: dict, metrics: dict, note: str) -> None:
     path, hist = mkt().params_path, mkt().params_history_dir
     hist.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    now = datetime.now(timezone.utc)
+    stamp = now.strftime("%Y%m%d_%H%M%S")
+    since = settings_since() if note == EDGES_NOTE and path.exists() else int(now.timestamp() * 1000)
     if path.exists():
         (hist / f"params_{stamp}.json").write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
     path.write_text(json.dumps({
         "updated_utc": stamp, "note": note, "params": clamp_params(params), "metrics": metrics,
+        "settings_since": since,
     }, indent=2, ensure_ascii=False), encoding="utf-8")
 
 

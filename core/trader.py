@@ -225,7 +225,8 @@ class Trader:
                 if px is not None and side * (px - t["tp"]) >= 0:
                     log.warning("%s/%s TP %s хүрсэн (одоо %s) ч биржид хаагдаагүй -> хааж байна",
                                 self.acc.name, sym, t["tp"], px)
-                    self.close_trade(t, "tp")
+                    if self.close_trade(t, "tp"):
+                        positions.pop(sym, None)   # else the check below calls it "unknown"
                     continue
             if not self.broker.has_stop(sym):
                 # Rule: every position must have a stop on the exchange.
@@ -236,13 +237,18 @@ class Trader:
                 except Exception as e:
                     notify(f"🚨 {sym}: could not place the stop ({e}) -> closing", key=f"nostop{sym}",
                            every_sec=3600, to=self.to())   # retried every loop; one message an hour is enough
-                    self.close_trade(t, "no_stop")
+                    if self.close_trade(t, "no_stop"):
+                        positions.pop(sym, None)
         known = {t["symbol"] for t in self.open_trades()} | \
                 {c["symbol"] for c in self.st.open_carries(self.m.mode, self.acc.name)}
-        for sym in positions:
-            if sym not in known and not self.acc.get(f"pending:{sym}"):
-                notify(f"⚠️ {sym}: a position the bot does not know (opened by hand?). The bot will not touch it.",
-                       key=f"unknown{sym}", every_sec=3600, to=self.to())
+        # Binance demo can still list a just-closed position for a moment (false alarms 2026-10-28,
+        # 11-04, 11-05, 11-09), so only warn when it is still there on the next loop.
+        unknown = {sym for sym in positions if sym not in known and not self.acc.get(f"pending:{sym}")}
+        seen = getattr(self, "_unknown_seen", {})
+        for sym in unknown & seen.get(self.acc.name, set()):
+            notify(f"⚠️ {sym}: a position the bot does not know (opened by hand?). The bot will not touch it.",
+                   key=f"unknown{sym}", every_sec=3600, to=self.to())
+        self._unknown_seen = {**seen, self.acc.name: unknown}
 
     def close_everything(self, reason: str, include_carry: bool):
         for sym in self.m.symbols:

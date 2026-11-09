@@ -41,10 +41,13 @@ class Crypto(Market):
         "funding_extreme": 0.0003,
     }
     param_space = {
-        "w_funding": (-1.5, 1.0, False), "w_fng": (-1.5, 1.0, False),
+        # owner 2026-11-09: off. 2y of data contradicted the contrarian funding / Fear&Greed idea
+        # (data review 10/26) and the hidden-year test did better without them both ways
+        # (tools/variant_test.py no_fund_fng: -2.5% / -1.4% vs -6.0%).
+        "w_funding": (0.0, 0.0, False), "w_fng": (0.0, 0.0, False),
         "funding_extreme": (0.0001, 0.001, False),
         "w_tsmom": (-1.0, 1.5, False), "tsmom_days": (10, 90, True), "w_premium": (-1.0, 1.5, False),
-        "w_stocks": (-1.0, 1.5, False), "w_usd": (-1.5, 1.0, False), "w_funding_chg": (-1.5, 1.5, False),
+        "w_stocks": (-1.0, 1.5, False), "w_usd": (-1.5, 1.0, False), "w_funding_chg": (0.0, 0.0, False),
     }
     rule_columns = ("funding", "fng")
     rule_help = "funding (8h funding rate, e.g. 0.0001), fng (Fear&Greed 0-100)"

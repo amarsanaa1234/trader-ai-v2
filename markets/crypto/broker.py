@@ -13,6 +13,7 @@ Both work the same way:
 """
 import logging
 import os
+import time
 
 import ccxt
 
@@ -282,10 +283,28 @@ class BinanceBroker:
             raise ValueError(why)
         order_side = "buy" if side == 1 else "sell"
         if mkt().entry_order == "market":
-            o = self.ex.create_order(symbol, "market", order_side, qty)
+            o = self._create_entry(symbol, "market", order_side, qty, None, {})
             return {"status": "filled", "filled": qty, "avg": float(o.get("average") or self.price(symbol))}
-        o = self.ex.create_order(symbol, "limit", order_side, qty, self._px(symbol, px), {"postOnly": True})
+        o = self._create_entry(symbol, "limit", order_side, qty, self._px(symbol, px), {"postOnly": True})
         return {"id": o["id"], "side": side, "qty": qty, "limit": px, "status": "open", "filled": 0.0, "avg": None}
+
+    def _create_entry(self, symbol, typ, order_side, qty, px, params):
+        """Every entry gets our own order id. On a timeout Binance may still have placed it
+        ("-1007 ... execution status unknown"), so look it up by that id before giving up:
+        a forgotten order that fills would be a position with no stop (audit 2026-11-09)."""
+        cid = f"tai{now_ms()}{os.urandom(3).hex()}"
+        try:
+            return self.ex.create_order(symbol, typ, order_side, qty, px, {**params, "clientOrderId": cid})
+        except ccxt.NetworkError as e:          # RequestTimeout (-1007) is a NetworkError
+            for wait in (1, 3, 6):              # a just-placed order can take a moment to show up
+                time.sleep(wait)
+                try:
+                    o = self.ex.fetch_order(None, symbol, {"origClientOrderId": cid})
+                    log.warning("%s захиалга timeout (%s) боловч биржид байна -> үргэлжлүүлж байна", symbol, e)
+                    return o
+                except (ccxt.OrderNotFound, ccxt.NetworkError):
+                    continue
+            raise e
 
     def entry_status(self, symbol, pend):
         if pend.get("status") == "filled" and "id" not in pend:

@@ -18,7 +18,7 @@ from . import library, mistakes, patterns, portfolio, shadow, significance, vali
 from .features import add_static_features
 from .context import mkt
 from .storage import now_ms
-from .strategy import clamp_params, load_params, param_space, save_params
+from .strategy import EDGES_NOTE, clamp_params, load_params, param_space, save_params
 
 log = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ MAX_VAULT_DD = 0.20
 PROMOTE_MARGIN = 0.25
 MIN_POSITIVE_FOLDS = 3
 ENSEMBLE_SIZE = 5
+EDGES_EVERY_MS = 7 * 86_400_000
 
 
 def min_vault_trades() -> int:
@@ -212,10 +213,13 @@ def improve(st, symbols, dopamine: float = 0.0, seed: int | None = None) -> dict
                 continue
             report["new_shadows"].append({"id": s["id"], "walk_forward": wf, "vault": v})
         report["promoted"] = False
-        # keep the live pattern edges fresh if that alone doesn't hurt the vault
+        # keep the live pattern edges fresh if that alone doesn't hurt the vault; at most weekly, because
+        # each refresh is checked on the same vault and goes live without a shadow test (audit 2026-11-09)
         live = load_params()
-        if edges != live.get("pattern_edges") and cur_vault["score"] >= validation.vault(frames, live)["score"]:
-            save_params(current, {"walk_forward": cur_wf, "vault": cur_vault}, note="pattern edges refreshed")
+        if (now_ms() - (st.get("edges_refreshed_at") or 0) >= EDGES_EVERY_MS and edges != live.get("pattern_edges")
+                and cur_vault["score"] >= validation.vault(frames, live)["score"]):
+            save_params(current, {"walk_forward": cur_wf, "vault": cur_vault}, note=EDGES_NOTE)
+            st.set("edges_refreshed_at", now_ms())
             report["edges_refreshed"] = True
 
     # forward-test the shadows on new candles; one may take over

@@ -39,6 +39,6 @@ def verdict(live_rs: list, expected: float | None) -> str | None:
 
 
 def since_settings_changed() -> int:
-    """Only trades opened with the current settings count."""
-    path = mkt().params_path
-    return int(path.stat().st_mtime * 1000) if path.exists() else 0
+    """Only trades opened with the current settings count (a pattern-edge refresh is not a change)."""
+    from .strategy import settings_since
+    return settings_since()
