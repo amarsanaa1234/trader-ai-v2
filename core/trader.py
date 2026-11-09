@@ -213,6 +213,20 @@ class Trader:
             if not t["partial_done"] and positions[sym]["qty"] < t["qty"] * 0.75:
                 self.st.update_trade(t["id"], partial_done=1)
                 notify(M.partial_taken(sym, side), to=self.to())
+            # The take-profit is a resting limit order, but Binance demo sometimes rejects it
+            # (-2022) and BNB/BTC/SOL then ran past their TP for days (2026-11-09). So the bot
+            # also watches the price itself and closes once the TP is reached.
+            if t["tp"] and self.m.is_open():
+                try:
+                    px = self.broker.price(sym)
+                except Exception as e:
+                    px = None
+                    log.debug("%s price: %s", sym, e)
+                if px is not None and side * (px - t["tp"]) >= 0:
+                    log.warning("%s/%s TP %s хүрсэн (одоо %s) ч биржид хаагдаагүй -> хааж байна",
+                                self.acc.name, sym, t["tp"], px)
+                    self.close_trade(t, "tp")
+                    continue
             if not self.broker.has_stop(sym):
                 # Rule: every position must have a stop on the exchange.
                 try:
