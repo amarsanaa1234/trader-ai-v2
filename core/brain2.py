@@ -143,11 +143,12 @@ def tick() -> None:
                 step(m, st, tf)
             if name == "fx":       # 15m London breakout paper bot (core/orb15.py, owner 2026-11-10)
                 from markets.fx import data
-                from . import orb15
+                from . import orb15, orb_learn
                 from .storage import now_ms
-                for s in orb15.PAIRS:
+                for s in orb_learn.PAIRS:      # all 10 pairs; the London bot uses 4 of them
                     data.sync_candles(st, s, orb15.TF, orb15.START_DAYS_BACK + orb15.WARMUP_DAYS + 5)
                 orb15.step(st, now_ms())
+                orb_learn.step(st, now_ms())   # the 15m bot that learns from its own trades
         except Exception:
             log.exception("brain2 %s", name)
 

@@ -126,6 +126,14 @@
     <div class="scroll" id="orb-trades" style="margin-top:10px"></div>
   </div></div>
 
+  <div class="card row" id="lrn-card" hidden><div>
+    <div class="head"><h2>🧠⚡ 2 дахь тархи: өөрөө суралцдаг 15 минутын бот (бүх сесс, paper)</h2><button class="q" data-help="h-lrn" aria-label="Тайлбар">?</button></div>
+    <div id="lrn-kpi" class="grid" style="margin:6px 0 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))"></div>
+    <div class="chart-box" style="height:200px"><canvas id="lrn-chart"></canvas></div>
+    <div class="scroll" id="lrn-mind" style="margin-top:10px"></div>
+    <div class="scroll" id="lrn-trades" style="margin-top:10px"></div>
+  </div></div>
+
   <div class="card row"><div>
     <div class="head"><h2>Сүүлийн арилжаанууд</h2>
       <div class="pager" id="trades-pager"></div></div>
@@ -163,6 +171,12 @@
       <p><b>Юу хийдэг вэ?</b> Лондонгийн цагаар 00:00–08:00 хоорондын дээд/доод үнийг тэмдэглээд, 08:00–10:00 хооронд үнэ тэр хүрээнээс <b>анх гарах</b> үед, 1 цагийн trend-тэй таарвал тэр чиглэлд орно. Stop = 2×ATR(15м), TP байхгүй, 16:00-д хаана. Хос: USD/JPY, EUR/JPY, GBP/JPY, GBP/USD (spread хамгийн бага).</p>
       <p><b>Яагаад энэ стратеги вэ?</b> 15 минутын 9 төрлийн 1,110 тохиргоог 5 жилийн өгөгдөл дээр туршихад OANDA-ийн spread-ийг тооцсоны дараа ганц энэ нь бот хараагүй <b>хоёр жил</b> дээр ашигтай гарсан (+0.06R ба +0.08R / арилжаа). Давуу тал <b>нимгэн</b> — баталгаа биш.</p>
       <p><b>Paper</b>: захиалга тавихгүй, хэний ч дансанд хүрэхгүй. Spread, stop-ийн slippage-ийг тооцно. 10,000-аас, арилжаа бүрт 2% эрсдэлтэй. "Шууд" гэсэн нь серверт тавьснаас хойш нээгдсэн арилжаанууд.</p>
+    </div>
+    <div class="help" id="h-lrn">
+      <p><b>Юу хийдэг вэ?</b> Токио, Лондон, Нью-Йоркийн нээлтийн breakout-ыг 10 хос дээр = <b>30 "гар"</b> болгож ажиглана. Дүрэм нь тогтмол — тохиргоо солихгүй. Харин <b>арилжаа бүрээс суралцаж</b> аль гар нь ашигтайг өөрөө шийднэ.</p>
+      <p><b>Яаж суралцдаг вэ?</b> Гар бүрийн хаагдсан арилжаанаас "дунджаар хэдэн R олдог вэ" гэдэг итгэлийг шинэчилнэ (хуучин арилжаа жилээр хагасаар суларна). Ашигтай байх магадлал ≥75% болсон гар л эрсдэлтэй арилжаалж, бусад нь зөвхөн ажиглагдаж суралцсаар байна — тэд дараа нь эргэж орж болно.</p>
+      <p><b>Муу арилжаанаас сургамж:</b> арилжаа бүрийн нөхцөлийг (хүрээний өргөн, trend-ийн хүч, хэлбэлзэл, гараг) хадгалж, бүх гар дээр <b>тогтмол алддаг нөхцөлийг</b> олоод тэнд орохоо больдог. Шинэ арилжаа дэмжихээ болбол сургамжаа хасна.</p>
+      <p>5 жилийн түүхээс (2021–2026) юу ч мэдэхгүйгээс эхэлж суралцаад, түүнээс хойш шинэ арилжаагаар үргэлжлүүлэн суралцаж байна. Түүхэн шалгалтад +34.8% (5 жил, 0.5% эрсдэлтэй, хойноос нь харсан сонголтгүй). Paper, 2% эрсдэл, захиалга тавихгүй.</p>
     </div>
     <div class="help" id="h-events">
       <p>АНУ-ын томоохон эдийн засгийн мэдээ (инфляци, ажлын байр, Fed-ийн хүүгийн шийдвэр гэх мэт) гарах үед крипто зах зээл <b>секундын дотор</b> огцом хөдөлж болдог.</p>
@@ -521,6 +535,59 @@ function renderOrb(d) {
   });
 }
 
+// ---- brain 2: the 15m learner (core/orb_learn.py) ----
+let lrnChart;
+const SESS = {tokyo: "Токио", london: "Лондон", ny: "Нью-Йорк"};
+const armName = (a) => { const [p, s] = a.split(":"); return `${esc(coin(p))} ${SESS[s] || s}`; };
+const TAG = {width: "хүрээний өргөн", trend: "trend-ийн хүч", vol: "хэлбэлзэл", dow: "гараг"};
+const LVL = {low: "бага", mid: "дунд", high: "их"};
+const WD = ["Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба", "Ням"];
+const tagName = (t) => { const [k, v] = t.split("="); return k === "dow" ? WD[+v] : `${TAG[k] || k} ${LVL[v] || v}`; };
+function renderLearn(d) {
+  const b = d.learn15;
+  $("lrn-card").hidden = !b;
+  if (!b) return;
+  const since = new Date(b.start).toLocaleDateString([], {month: "numeric", day: "numeric"});
+  const live = new Date(b.live_from).toLocaleDateString([], {month: "numeric", day: "numeric"});
+  const kpis = [
+    ["💰 Paper данс", pct(b.return), cls(b.return), `${since}-аас · 10,000 → ${fmt(b.equity)}`],
+    ["📊 Эрсдэлтэй арилжаа", String(b.n_trades), "", `дундаж ${fmt(b.avg_r)}R · уналт ${pct(b.max_dd)}`],
+    ["👀 Зөвхөн ажигласан", String(b.paper_only + b.blocked), "", `${b.blocked} нь сургамжаар хаагдсан`],
+    ["🧠 Суралцсан арилжаа", String(b.learned_from), "", `шууд (${live}-аас): ${b.live_trades} арилжаа ${fmt(b.live_r)}R`],
+  ];
+  $("lrn-kpi").innerHTML = kpis.map(([l, v, cl, sub]) =>
+    `<div class="card kpi"><div class="label">${l}</div><div class="value ${cl}">${v}</div><div class="sub">${sub}</div></div>`).join("");
+  const trusted = (b.trusted || []).map(x => `<tr><td>✅ ${armName(x.arm)}</td><td class="${cls(x.avg_r)}">${fmt(x.avg_r)}R</td><td>${pct(x.p)}</td></tr>`);
+  const worst = (b.worst || []).map(x => `<tr><td>⛔ ${armName(x.arm)}</td><td class="${cls(x.avg_r)}">${fmt(x.avg_r)}R</td><td>${pct(x.p)}</td></tr>`);
+  const lessons = (b.lessons || []).map(x => `<li>🚫 <b>${tagName(x.tag)}</b> үед орохгүй — ${x.n} арилжаанд дунджаар ${fmt(x.avg_r)}R</li>`).join("");
+  $("lrn-mind").innerHTML = `<table><thead><tr><th>Ботын итгэл (30 гараас)</th><th>Дундаж</th><th>Ашигтай байх магадлал</th></tr></thead><tbody>
+    ${trusted.join("") || `<tr><td colspan="3" class="sub">Одоогоор итгэлтэй гар алга</td></tr>`}${worst.join("")}</tbody></table>
+    <div class="sub" style="margin-top:8px"><b>Муу арилжаанаас авсан сургамж:</b></div>
+    <ul style="margin:4px 0 0 18px">${lessons || "<li class='sub'>Одоогоор алга</li>"}</ul>`;
+  const rows = (b.trades || []).slice(-15).reverse();
+  $("lrn-trades").innerHTML = rows.length ? `<table><thead><tr><th>Хаагдсан</th><th>Гар</th><th>R</th><th>Шийдвэр</th></tr></thead><tbody>` +
+    rows.map(t => `<tr><td>${new Date(t.ts).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}${t.live ? " 🟢" : ""}</td>
+      <td>${esc(coin(t.symbol))} ${SESS[t.session] || t.session} <span class="sub">${t.side}</span></td><td class="${cls(t.r)}">${fmt(t.r)}R</td>
+      <td>${t.weight > 0 ? `💰 арилжсан (${fmt(t.pnl)})` : t.blocked_by.length ? `🚫 ${t.blocked_by.map(tagName).join(", ")}` : `👀 ажигласан (итгэл ${pct(t.p)})`}</td></tr>`).join("") +
+    `</tbody></table><div class="sub" style="margin-top:6px">🟢 = серверт тавьснаас хойш · ажигласан арилжаа ч ботыг сургадаг · paper</div>`
+    : `<div class="empty">${since}-аас хойш арилжаа хаагдаагүй байна</div>`;
+  const css = getComputedStyle(document.documentElement);
+  const up = css.getPropertyValue("--up").trim(), muted = css.getPropertyValue("--muted").trim(),
+        line = css.getPropertyValue("--line").trim();
+  const datasets = [{label: "🧠⚡ суралцдаг 15м бот", data: (b.curve || []).map(([t, v]) => ({x: t, y: v * 100})),
+                     borderColor: up, borderWidth: 2, pointRadius: 0, stepped: true}];
+  if (lrnChart) { lrnChart.data.datasets = datasets; lrnChart.update("none"); return; }
+  lrnChart = new Chart($("lrn-chart"), {
+    type: "line", data: {datasets},
+    options: { responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+      plugins: { legend: { labels: { color: muted, boxWidth: 12 } },
+                 tooltip: { callbacks: { label: (q) => `${q.parsed.y.toFixed(2)}%` } } },
+      scales: { x: { type: "linear", ticks: { color: muted, maxTicksLimit: 6,
+                       callback: (v) => new Date(v).toLocaleDateString([], {month: "numeric", day: "numeric"}) }, grid: { display: false } },
+                y: { ticks: { color: muted, callback: (v) => v + "%" }, grid: { color: line } } } }
+  });
+}
+
 let chart;
 function drawChart(hist) {
   const css = getComputedStyle(document.documentElement);
@@ -593,6 +660,7 @@ async function load() {
   $("trades").innerHTML = renderTrades(d);
   try { renderTfCompare(d); } catch (e) { console.error(e); }
   try { renderOrb(d); } catch (e) { console.error(e); }
+  try { renderLearn(d); } catch (e) { console.error(e); }
 
   $("shadows").innerHTML = renderShadows(d);
 

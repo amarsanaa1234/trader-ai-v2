@@ -92,6 +92,7 @@ def data(user: str) -> dict:
         "drift": drift(st, user),
         "tf_compare": tf_compare(st, mode, user),
         "orb15": st.get("brain2_orb15") if m.name == "fx" else None,   # 15m paper bot (core/orb15.py)
+        "learn15": st.get("brain2_learn") if m.name == "fx" else None,  # 15m learner (core/orb_learn.py)
         **m.dashboard_extras(st),   # market-specific panels
     }
 
