@@ -17,6 +17,7 @@ MAX_SHADOWS = 6
 MAX_AGE_DAYS = SHADOW_MIN_DAYS + 30   # a shadow gets a month past the minimum to collect enough trades
 MIN_FORWARD_TRADES = 6
 PROMOTE_MARGIN = 0.3
+EARLY_DROP_DAYS = 14   # owner 2026-11-10: a shadow clearly behind live by then frees its place early
 
 
 def get(st) -> list[dict]:
@@ -55,8 +56,13 @@ def review(st, frames: dict) -> dict:
             if winner is None or mine["score"] > winner["forward"]["score"]:
                 winner = s
             continue
-        if days > MAX_AGE_DAYS or (days >= SHADOW_MIN_DAYS and mine["return"] < -0.05):
-            log.info("Shadow %s хасагдлаа (%.0f хоног, forward %s)", s["id"], days, mine)
+        # Clearly behind live after two weeks: it would need to gain twice the promotion margin to
+        # win, and meanwhile new candidates that passed every check found no free place
+        # (crypto 2026-11-10: 5 of 6 shadows behind live, 2 passing candidates turned away).
+        behind = (days >= EARLY_DROP_DAYS and mine["trades"] >= MIN_FORWARD_TRADES
+                  and mine["score"] < theirs["score"] - PROMOTE_MARGIN and mine["return"] < theirs["return"])
+        if days > MAX_AGE_DAYS or (days >= SHADOW_MIN_DAYS and mine["return"] < -0.05) or behind:
+            log.info("Shadow %s хасагдлаа (%.0f хоног, forward %s, live %s)", s["id"], days, mine, theirs)
             continue
         keep.append(s)
     promoted = None
