@@ -141,6 +141,13 @@ def tick() -> None:
             sync(m, st)
             for tf in (SMALL_TF, own_tf(m)):
                 step(m, st, tf)
+            if name == "fx":       # 15m London breakout paper bot (core/orb15.py, owner 2026-11-10)
+                from markets.fx import data
+                from . import orb15
+                from .storage import now_ms
+                for s in orb15.PAIRS:
+                    data.sync_candles(st, s, orb15.TF, orb15.START_DAYS_BACK + orb15.WARMUP_DAYS + 5)
+                orb15.step(st, now_ms())
         except Exception:
             log.exception("brain2 %s", name)
 

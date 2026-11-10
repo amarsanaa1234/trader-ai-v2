@@ -118,6 +118,14 @@
     <div class="scroll" id="tfc-trades" style="margin-top:10px"></div>
   </div></div>
 
+  <div class="card row" id="orb-card" hidden><div>
+    <div class="head"><h2>⚡ 2 дахь тархи: 15 минутын FX (London breakout, paper)</h2><button class="q" data-help="h-orb" aria-label="Тайлбар">?</button></div>
+    <div id="orb-kpi" class="grid" style="margin:6px 0 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))"></div>
+    <div class="chart-box" style="height:200px"><canvas id="orb-chart"></canvas></div>
+    <div class="scroll" id="orb-open" style="margin-top:10px"></div>
+    <div class="scroll" id="orb-trades" style="margin-top:10px"></div>
+  </div></div>
+
   <div class="card row"><div>
     <div class="head"><h2>Сүүлийн арилжаанууд</h2>
       <div class="pager" id="trades-pager"></div></div>
@@ -150,6 +158,11 @@
       <p>Цаг бүр лаа хаагдахад шийдвэр гаргаж арилжаа нээж, stop, хагас авах, TP, хугацааны хязгаар, өдрийн алдагдлын хязгаарыг бодит бот шиг хэрэгжүүлнэ. Хийсэн арилжаа нь дараа нь өөрчлөгдөхгүй.</p>
       <p><b>Захиалга тавихгүй</b>, хэний ч дансанд хүрэхгүй. Шимтгэл, spread, swap-ийг тооцно. 10,000-аас эхэлсэн.</p>
       <p>Харьцуулахын тулд ижил paper ботыг ижил өдрөөс <b id="tfc-own">4ц</b> лаан дээр бас ажиллуулдаг. "Demo данс" нь таны дансны бодит үр дүн.</p>
+    </div>
+    <div class="help" id="h-orb">
+      <p><b>Юу хийдэг вэ?</b> Лондонгийн цагаар 00:00–08:00 хоорондын дээд/доод үнийг тэмдэглээд, 08:00–10:00 хооронд үнэ тэр хүрээнээс <b>анх гарах</b> үед, 1 цагийн trend-тэй таарвал тэр чиглэлд орно. Stop = 2×ATR(15м), TP байхгүй, 16:00-д хаана. Хос: USD/JPY, EUR/JPY, GBP/JPY, GBP/USD (spread хамгийн бага).</p>
+      <p><b>Яагаад энэ стратеги вэ?</b> 15 минутын 9 төрлийн 1,110 тохиргоог 5 жилийн өгөгдөл дээр туршихад OANDA-ийн spread-ийг тооцсоны дараа ганц энэ нь бот хараагүй <b>хоёр жил</b> дээр ашигтай гарсан (+0.06R ба +0.08R / арилжаа). Давуу тал <b>нимгэн</b> — баталгаа биш.</p>
+      <p><b>Paper</b>: захиалга тавихгүй, хэний ч дансанд хүрэхгүй. Spread, stop-ийн slippage-ийг тооцно. 10,000-аас, арилжаа бүрт 2% эрсдэлтэй. "Шууд" гэсэн нь серверт тавьснаас хойш нээгдсэн арилжаанууд.</p>
     </div>
     <div class="help" id="h-events">
       <p>АНУ-ын томоохон эдийн засгийн мэдээ (инфляци, ажлын байр, Fed-ийн хүүгийн шийдвэр гэх мэт) гарах үед крипто зах зээл <b>секундын дотор</b> огцом хөдөлж болдог.</p>
@@ -463,6 +476,51 @@ function renderTfCompare(d) {
   });
 }
 
+// ---- brain 2: 15m FX London breakout paper bot (core/orb15.py) ----
+let orbChart;
+function renderOrb(d) {
+  const b = d.orb15;
+  $("orb-card").hidden = !b;
+  if (!b) return;
+  const since = new Date(b.start).toLocaleDateString([], {month: "numeric", day: "numeric"});
+  const live = new Date(b.live_from).toLocaleDateString([], {month: "numeric", day: "numeric"});
+  const kpis = [
+    ["💰 Paper данс", pct(b.return), cls(b.return), `${since}-аас · 10,000 → ${fmt(b.equity)}`],
+    ["📊 Арилжаа", String(b.n_trades), "", `ялалт ${b.win == null ? "–" : pct(b.win)} · дундаж ${fmt(b.avg_r)}R`],
+    ["📉 Хамгийн их уналт", pct(b.max_dd), "", "арилжаа бүрт 2% эрсдэл"],
+    ["🟢 Шууд (" + live + "-аас)", `${fmt(b.live_r)}R`, cls(b.live_r), `${b.live_trades} арилжаа серверт тавьснаас хойш`],
+  ];
+  $("orb-kpi").innerHTML = kpis.map(([l, v, cl, sub]) =>
+    `<div class="card kpi"><div class="label">${l}</div><div class="value ${cl}">${v}</div><div class="sub">${sub}</div></div>`).join("");
+  const op = b.open || [];
+  $("orb-open").innerHTML = op.length ? `<table><thead><tr><th>Нээлттэй (15м)</th><th>Орсон</th><th>Stop</th><th>Одоо</th></tr></thead><tbody>` +
+    op.map(q => `<tr><td>${esc(coin(q.symbol))} <span class="sub">${q.side}</span></td><td>${fmtp(q.entry)}</td>
+      <td>${fmtp(q.stop)}</td><td class="${cls(q.r_now)}">${fmt(q.r_now)}R</td></tr>`).join("") + `</tbody></table>`
+    : `<div class="empty">Одоо нээлттэй арилжаа алга (Лондонгийн 08:00–10:00-д л ордог)</div>`;
+  const rows = (b.trades || []).slice(-15).reverse();
+  $("orb-trades").innerHTML = rows.length ? `<table><thead><tr><th>Хаагдсан</th><th>Хос</th><th>R</th><th>Ашиг</th><th>Шалтгаан</th></tr></thead><tbody>` +
+    rows.map(t => `<tr><td>${new Date(t.ts).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}${t.live ? " 🟢" : ""}</td>
+      <td>${esc(coin(t.symbol))} <span class="sub">${t.side}</span></td><td class="${cls(t.r)}">${fmt(t.r)}R</td>
+      <td class="${cls(t.pnl)}">${fmt(t.pnl)}</td><td>${t.reason === "stop" ? "Stop" : "16:00 / хугацаа"}</td></tr>`).join("") +
+    `</tbody></table><div class="sub" style="margin-top:6px">🟢 = серверт тавьснаас хойш нээгдсэн · paper, захиалга тавиагүй</div>`
+    : `<div class="empty">${since}-аас хойш арилжаа хаагдаагүй байна</div>`;
+  const css = getComputedStyle(document.documentElement);
+  const up = css.getPropertyValue("--up").trim(), muted = css.getPropertyValue("--muted").trim(),
+        line = css.getPropertyValue("--line").trim();
+  const datasets = [{label: "⚡ 15м London breakout", data: (b.curve || []).map(([t, v]) => ({x: t, y: v * 100})),
+                     borderColor: up, borderWidth: 2, pointRadius: 0, stepped: true}];
+  if (orbChart) { orbChart.data.datasets = datasets; orbChart.update("none"); return; }
+  orbChart = new Chart($("orb-chart"), {
+    type: "line", data: {datasets},
+    options: { responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+      plugins: { legend: { labels: { color: muted, boxWidth: 12 } },
+                 tooltip: { callbacks: { label: (q) => `${q.parsed.y.toFixed(2)}%` } } },
+      scales: { x: { type: "linear", ticks: { color: muted, maxTicksLimit: 6,
+                       callback: (v) => new Date(v).toLocaleDateString([], {month: "numeric", day: "numeric"}) }, grid: { display: false } },
+                y: { ticks: { color: muted, callback: (v) => v + "%" }, grid: { color: line } } } }
+  });
+}
+
 let chart;
 function drawChart(hist) {
   const css = getComputedStyle(document.documentElement);
@@ -534,6 +592,7 @@ async function load() {
 
   $("trades").innerHTML = renderTrades(d);
   try { renderTfCompare(d); } catch (e) { console.error(e); }
+  try { renderOrb(d); } catch (e) { console.error(e); }
 
   $("shadows").innerHTML = renderShadows(d);
 

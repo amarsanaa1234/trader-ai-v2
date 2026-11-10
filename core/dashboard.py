@@ -91,6 +91,7 @@ def data(user: str) -> dict:
                      "symbols": [s for s in m.symbols if events.blackout(st, symbol=s)]},
         "drift": drift(st, user),
         "tf_compare": tf_compare(st, mode, user),
+        "orb15": st.get("brain2_orb15") if m.name == "fx" else None,   # 15m paper bot (core/orb15.py)
         **m.dashboard_extras(st),   # market-specific panels
     }
 
