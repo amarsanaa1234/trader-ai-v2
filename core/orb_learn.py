@@ -40,7 +40,9 @@ SESSIONS = {
     "london": {"tz": "Europe/London", "r0": 0, "r1": 480, "e1": 600, "flat": 960},         # 00-08 / 08-10 / 16:00
     "ny": {"tz": "America/New_York", "r0": 480, "r1": 570, "e1": 690, "flat": 960},       # 08-09:30 / -11:30 / 16:00
 }
-SD_R, PRIOR_MEAN, PRIOR_N, HALF_LIFE_DAYS = 1.2, -0.05, 50, 365
+# SD_R measured, not tuned: the R of all 10,366 candidate trades has sd 1.54 (audit 2026-11-11; 1.2 made
+# the beliefs overconfident). With it the same settings: unseen 2y +23.4R / 141 trades (was +19.3R / 172).
+SD_R, PRIOR_MEAN, PRIOR_N, HALF_LIFE_DAYS = 1.5, -0.05, 50, 365
 # How cautious: chosen on 2021-11..2024-10, judged on the 2 years after (tools/orb_learn_test.py --grid).
 # Half risk for "leaning profitable" arms lost in every setting there, so an arm trades only once it
 # is probably profitable: 50/0.75 -> +45.6R choosing, +19.3R (172 trades) on the unseen 2 years.
