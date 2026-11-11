@@ -57,6 +57,8 @@ def test_brain2_step_carries_on_from_the_snapshot(tmp_path, monkeypatch):
     end = START + 60 * DAY
     snap.write_text(json.dumps({"end": end, "trades": [trade(k, "USD_JPY:london", 0.4) for k in range(50)]}))
     monkeypatch.setattr(orb_learn, "snapshot_path", lambda: snap)
+    from core import ai
+    monkeypatch.setattr(ai, "enabled", lambda: False)         # no AI on a test machine
     b = orb_learn.step(st, START + 100 * DAY)
     assert b["start"] == end and b["learned_from"] >= 50
     assert all(t["ts"] > end for t in b["trades"])

@@ -50,7 +50,7 @@ DAY_MS, KEY = 86_400_000, "brain2_learn"
 BUCKETS = {"width": (0.8, 1.6), "trend": (0.3, 1.0), "vol": (0.8, 1.25)}
 
 
-SNAP_FIELDS = ("arm", "pair", "session", "entry_ts", "exit_ts", "r", "width", "trend", "vol", "dow")
+SNAP_FIELDS = ("arm", "pair", "session", "side", "entry_ts", "exit_ts", "r", "width", "trend", "vol", "dow")
 
 
 def snapshot_path():
@@ -77,7 +77,11 @@ def step(st, now: int) -> dict | None:
         if len(df) < 96 * 25:
             continue
         cands += [t for s in SESSIONS for t in candidates(df, pair, s) if t["entry_ts"] > snap_end]
-    r = replay(cands, b["start"], known)
+    from . import learn_ai
+    learn_ai.log_calendar(st)
+    learn_ai.assess_risk(st, now)
+    learn_ai.research(st, known + [t for t in cands if t["exit_ts"] <= now], now)
+    r = replay(cands, b["start"], known, learn_ai.Context.load(st))
     risked = [t for t in r["book"] if t["weight"] > 0 and "pnl" in t]
     live = [t for t in risked if t["entry_ts"] >= b["live_from"]]
     beliefs = sorted(r["beliefs"].items(), key=lambda x: -x[1][0])
@@ -90,6 +94,9 @@ def step(st, now: int) -> dict | None:
              trusted=[{"arm": a, "avg_r": round(m, 3), "p": round(p, 2)} for a, (m, p) in beliefs if p >= FULL_P],
              worst=[{"arm": a, "avg_r": round(m, 3), "p": round(p, 2)} for a, (m, p) in beliefs[-3:]],
              lessons=[{"tag": k, "n": n, "avg_r": m} for k, (n, m) in r["rules"].items()],
+             risk_now=(st.get("learn_risk") or [None])[-1],
+             hypotheses=(st.get("learn_hypotheses") or [])[-10:],
+             ai=learn_ai.ai.model_name() if learn_ai.ai.enabled() else "off",
              trades=[{"symbol": t["pair"], "session": t["session"], "ts": t["exit_ts"],
                       "side": "long" if t["side"] > 0 else "short", "r": round(t["r"], 2),
                       "pnl": t.get("pnl", 0.0), "weight": t["weight"], "p": t["p_pos"],
@@ -135,7 +142,14 @@ def bucket(tr: dict) -> list[str]:
     tags = [f"dow={tr['dow']}"]
     for k, (lo, hi) in BUCKETS.items():
         tags.append(f"{k}={'low' if tr[k] < lo else 'high' if tr[k] > hi else 'mid'}")
+    if tr.get("risk"):                     # news risk of its currencies (core/learn_ai.py), when it was rated
+        tags.append(f"risk={tr['risk']}")
     return tags
+
+
+def situation(tr: dict) -> list[str]:
+    """Tags the AI researcher may combine: the lesson tags plus session and side."""
+    return bucket(tr) + [f"session={tr['session']}", f"side={'long' if tr.get('side', 1) > 0 else 'short'}"]
 
 
 def _post(rs, ages_days):
@@ -167,9 +181,11 @@ def lessons(closed: list[dict]) -> dict:
     return out
 
 
-def replay(cands: list[dict], start: int, snapshot: list | None = None) -> dict:
+def replay(cands: list[dict], start: int, snapshot: list | None = None, ctx=None) -> dict:
     """Walk through the candidate trades in time order. Each decision uses only trades closed
-    before it. `snapshot`: earlier closed trades the learner already knows (same fields)."""
+    before it. `snapshot`: earlier closed trades the learner already knows (same fields).
+    `ctx` (core/learn_ai.Context): events, news risk and AI lessons known at each moment."""
+    ai_rules = []
     cands = sorted(cands, key=lambda t: t["entry_ts"])
     known = list(snapshot or [])            # closed trades it has learned from
     by_arm = {}
@@ -197,13 +213,26 @@ def replay(cands: list[dict], start: int, snapshot: list | None = None) -> dict:
                 curve.append([int(p["exit_ts"]), round(eq / orb15.START_EQUITY - 1, 5)])
         if now - rules_at >= LESSON_EVERY_MS:
             rules, rules_at = lessons(known), now
+            if ctx:                         # AI lessons count from their acceptance, while still supported
+                from .learn_ai import combo_test
+                ai_rules = [h for h in ctx.active_rules(now) if combo_test(known, h["tags"], now)["ok"]]
         if any(p["arm"] == tr["arm"] for p in pending):
             continue                        # one position per arm
         if now // DAY_MS != day:
             day, day_start = now // DAY_MS, eq
         mine = by_arm.get(tr["arm"], [])
         mean, p_pos = _post([t["r"] for t in mine], [(now - t["exit_ts"]) / DAY_MS for t in mine])
+        if ctx:
+            tr = {**tr, "risk": ctx.risk_at(now, tr["pair"])}
         hit = [tag for tag in bucket(tr) if tag in rules]
+        if ctx:                             # AI lessons, then the safety check (core/learn_ai.py)
+            tags = situation(tr)
+            hit += ["+".join(h["tags"]) for h in ai_rules if all(x in tags for x in h["tags"])]
+            event = ctx.event_near(now, tr["pair"])
+            if event:
+                hit.append(f"event: {event}")
+            if tr.get("risk") == "extreme":
+                hit.append("risk=extreme")
         weight = 0.0 if hit else 1.0 if p_pos >= FULL_P else 0.5 if p_pos >= HALF_P else 0.0
         if eq / day_start - 1 <= -orb15.DAILY_LOSS or eq / peak - 1 <= -orb15.MAX_DD:
             weight = 0.0

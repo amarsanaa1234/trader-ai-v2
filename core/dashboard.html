@@ -176,6 +176,7 @@
       <p><b>Юу хийдэг вэ?</b> Токио, Лондон, Нью-Йоркийн нээлтийн breakout-ыг 10 хос дээр = <b>30 "гар"</b> болгож ажиглана. Дүрэм нь тогтмол — тохиргоо солихгүй. Харин <b>арилжаа бүрээс суралцаж</b> аль гар нь ашигтайг өөрөө шийднэ.</p>
       <p><b>Яаж суралцдаг вэ?</b> Гар бүрийн хаагдсан арилжаанаас "дунджаар хэдэн R олдог вэ" гэдэг итгэлийг шинэчилнэ (хуучин арилжаа жилээр хагасаар суларна). Ашигтай байх магадлал ≥75% болсон гар л эрсдэлтэй арилжаалж, бусад нь зөвхөн ажиглагдаж суралцсаар байна — тэд дараа нь эргэж орж болно.</p>
       <p><b>Муу арилжаанаас сургамж:</b> арилжаа бүрийн нөхцөлийг (хүрээний өргөн, trend-ийн хүч, хэлбэлзэл, гараг) хадгалж, бүх гар дээр <b>тогтмол алддаг нөхцөлийг</b> олоод тэнд орохоо больдог. Шинэ арилжаа дэмжихээ болбол сургамжаа хасна.</p>
+      <p><b>AI туслахууд:</b> (1) <b>AI судлаач</b> долоо хоног бүр "энэ хоёр нөхцөл хамт байхад алддаг байх" гэсэн санаа гаргана — бот түүнийг өөрийн арилжаан дээр (хуучин ба шинэ хагас хоёуланд) шалгаж, давсан нь л сургамж болно. (2) <b>Мэдээний эрсдэл</b>: 4 цаг тутам валют бүрийн эрсдэлийг үнэлж арилжаанд тэмдэглэнэ — эрсдэл өндөр өдрүүд алддаг эсэхийг бот өөрөө сурна. (3) <b>Аюулгүй байдал</b>: чухал мэдээнээс ±60 минут эсвэл "онцгой их" эрсдэлтэй үед орохгүй. AI чиглэл таамаглахгүй, захиалга тавихгүй.</p>
       <p>5 жилийн түүхээс (2021–2026) юу ч мэдэхгүйгээс эхэлж суралцаад, түүнээс хойш шинэ арилжаагаар үргэлжлүүлэн суралцаж байна. Түүхэн шалгалтад +34.8% (5 жил, 0.5% эрсдэлтэй, хойноос нь харсан сонголтгүй). Paper, 2% эрсдэл, захиалга тавихгүй.</p>
     </div>
     <div class="help" id="h-events">
@@ -539,10 +540,34 @@ function renderOrb(d) {
 let lrnChart;
 const SESS = {tokyo: "Токио", london: "Лондон", ny: "Нью-Йорк"};
 const armName = (a) => { const [p, s] = a.split(":"); return `${esc(coin(p))} ${SESS[s] || s}`; };
-const TAG = {width: "хүрээний өргөн", trend: "trend-ийн хүч", vol: "хэлбэлзэл", dow: "гараг"};
-const LVL = {low: "бага", mid: "дунд", high: "их"};
+const TAG = {width: "хүрээний өргөн", trend: "trend-ийн хүч", vol: "хэлбэлзэл", dow: "гараг", risk: "мэдээний эрсдэл"};
+const LVL = {low: "бага", mid: "дунд", high: "их", normal: "хэвийн", extreme: "онцгой их"};
 const WD = ["Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба", "Ням"];
-const tagName = (t) => { const [k, v] = t.split("="); return k === "dow" ? WD[+v] : `${TAG[k] || k} ${LVL[v] || v}`; };
+const tagName = (t) => {
+  if (t.startsWith("event: ")) return `📅 ${esc(t.slice(7))} ойрхон`;
+  if (t.includes("+")) return t.split("+").map(tagName).join(" + ");
+  const [k, v] = t.split("=");
+  if (k === "dow") return WD[+v];
+  if (k === "session") return `${SESS[v] || v} сесс`;
+  if (k === "side") return v === "long" ? "long" : "short";
+  return `${TAG[k] || k} ${LVL[v] || v}`;
+};
+function aiHtml(b) {
+  const r = b.risk_now;
+  const hot = r ? Object.entries(r.levels || {}).filter(([, l]) => l === "high" || l === "extreme") : [];
+  const risk = !r ? `<span class="sub">үнэлгээ хараахан алга</span>`
+    : hot.length ? hot.map(([c, l]) => `<b>${c}</b> ${LVL[l]} <span class="sub">(${esc((r.reasons || {})[c] || "")})</span>`).join("<br>")
+    : `бүх валют хэвийн / бага <span class="sub">${new Date(r.ts).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}</span>`;
+  const hyps = (b.hypotheses || []).slice().reverse().map(h => {
+    const t = h.test || {};
+    const nums = t.n ? ` — ${t.n} арилжаа, ${fmt(t.avg_r)}R (хуучин ${fmt(t.older)} / шинэ ${fmt(t.newer)})` : ` — ${esc(t.why || "")}`;
+    return `<li>${h.status === "accepted" ? "✅" : "❌"} <b>${tagName(h.tags.join("+"))}</b>${nums}<br><span class="sub">AI: ${esc(h.why)}</span></li>`;
+  }).join("");
+  return `<div class="sub" style="margin-top:10px"><b>🤖 AI (${esc(b.ai || "off")})</b></div>
+    <div style="margin:4px 0">📰 Мэдээний эрсдэл: ${risk}</div>
+    <div class="sub"><b>AI судлаачийн таамгууд</b> (шалгалт давсан нь ✅ сургамж болно):</div>
+    <ul style="margin:4px 0 0 18px">${hyps || "<li class='sub'>Долоо хоногт нэг удаа гаргана</li>"}</ul>`;
+}
 function renderLearn(d) {
   const b = d.learn15;
   $("lrn-card").hidden = !b;
@@ -563,7 +588,7 @@ function renderLearn(d) {
   $("lrn-mind").innerHTML = `<table><thead><tr><th>Ботын итгэл (30 гараас)</th><th>Дундаж</th><th>Ашигтай байх магадлал</th></tr></thead><tbody>
     ${trusted.join("") || `<tr><td colspan="3" class="sub">Одоогоор итгэлтэй гар алга</td></tr>`}${worst.join("")}</tbody></table>
     <div class="sub" style="margin-top:8px"><b>Муу арилжаанаас авсан сургамж:</b></div>
-    <ul style="margin:4px 0 0 18px">${lessons || "<li class='sub'>Одоогоор алга</li>"}</ul>`;
+    <ul style="margin:4px 0 0 18px">${lessons || "<li class='sub'>Одоогоор алга</li>"}</ul>` + aiHtml(b);
   const rows = (b.trades || []).slice(-15).reverse();
   $("lrn-trades").innerHTML = rows.length ? `<table><thead><tr><th>Хаагдсан</th><th>Гар</th><th>R</th><th>Шийдвэр</th></tr></thead><tbody>` +
     rows.map(t => `<tr><td>${new Date(t.ts).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}${t.live ? " 🟢" : ""}</td>
