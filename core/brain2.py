@@ -1,4 +1,5 @@
 """Brain 2: a paper bot on 1h candles, for comparison only (owner, 2026-10-27).
+Crypto and commodities only since 2026-11-12 (FX's main bot became the 15m learner).
 
 It never places an order and never touches anyone's account. One small service
 (`python main.py brain2`) trades every market on paper as if it were live: when
@@ -132,7 +133,8 @@ def tick() -> None:
     import markets
     from .context import activate
     from .storage import Storage
-    for name in ("crypto", "fx", "commodities"):
+    # FX left brain 2 on 2026-11-12 (owner): its main bot is now the 15m learner (core/fx15_live.py)
+    for name in ("crypto", "commodities"):
         try:
             m = markets.get(name)
             activate(m)
@@ -141,14 +143,6 @@ def tick() -> None:
             sync(m, st)
             for tf in (SMALL_TF, own_tf(m)):
                 step(m, st, tf)
-            if name == "fx":       # 15m London breakout paper bot (core/orb15.py, owner 2026-11-10)
-                from markets.fx import data
-                from . import orb15, orb_learn
-                from .storage import now_ms
-                for s in orb_learn.PAIRS:      # all 10 pairs; the London bot uses 4 of them
-                    data.sync_candles(st, s, orb15.TF, orb15.START_DAYS_BACK + orb15.WARMUP_DAYS + 5)
-                orb15.step(st, now_ms())
-                orb_learn.step(st, now_ms())   # the 15m bot that learns from its own trades
         except Exception:
             log.exception("brain2 %s", name)
 

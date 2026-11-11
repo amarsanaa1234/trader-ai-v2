@@ -91,9 +91,9 @@ def data(user: str) -> dict:
                      "symbols": [s for s in m.symbols if events.blackout(st, symbol=s)]},
         "drift": drift(st, user),
         "tf_compare": tf_compare(st, mode, user),
-        "orb15": st.get("brain2_orb15") if m.name == "fx" else None,   # 15m paper bot (core/orb15.py)
-        "learn15": st.get("brain2_learn") if m.name == "fx" else None,  # 15m learner (core/orb_learn.py)
-        "learn_live": st.get("fx15_live") if m.name == "fx" else None,  # its OANDA demo trades (core/fx15_live.py)
+        # FX's main bot (owner 2026-11-12): the 15m learner's brain and its OANDA demo trades
+        "learn15": st.get("brain2_learn") if m.name == "fx" else None,
+        "learn_live": st.get("fx15_live") if m.name == "fx" else None,
         **m.dashboard_extras(st),   # market-specific panels
     }
 

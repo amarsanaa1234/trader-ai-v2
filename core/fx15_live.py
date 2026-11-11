@@ -1,5 +1,7 @@
-"""The 15m learner on the OANDA demo account (owner, 2026-11-11: it replaces the 4h FX bot
-there, 2% risk per trade).
+"""FX's main bot: the 15m learner on the OANDA demo account (owner, 2026-11-11: it replaced
+the 4h FX bot there, 2% risk per trade; 2026-11-12: the 4h bot and FX brain 2 removed).
+It also does the FX housekeeping the 4h bot used to do (calendar, headlines, the learner's
+brain and AI helpers) - see housekeeping().
 
 Brain and hands are separate. The brain is exactly the learner of brain 2
 (core/orb_learn.py: same candidates, same beliefs, same lessons, AI lessons and safety
@@ -149,8 +151,27 @@ def tick(st, broker, user, now: int | None = None):
     live = Live(st, broker, user)
     live.reconcile(now)
     live.enter(decide(st, now), now)
-    live.s["nav"], live.s["updated"] = broker.equity(), now
+    nav = broker.equity()
+    live.s["nav"], live.s["updated"] = nav, now
+    live.s["equity"] = (live.s.get("equity") or [])[-3000:] + [[now, round(nav, 2)]]
     live.save()
+
+
+def housekeeping(st, now: int, last: dict) -> None:
+    """What the 4h FX bot used to do and the learner needs: the economic calendar (6-hourly),
+    headlines and their AI scores (half-hourly), and the learner's brain with its AI helpers
+    (hourly: beliefs, lessons, news risk, AI researcher - core/orb_learn.step)."""
+    from . import events, news
+    jobs = (("calendar", 6 * 3_600_000, lambda: events.refresh(st)),
+            ("news", 30 * 60_000, lambda: (news.fetch_headlines(st), news.score_news(st))),
+            ("brain", 3_600_000, lambda: orb_learn.step(st, now)))
+    for name, every, job in jobs:
+        if now - last.get(name, 0) >= every:
+            last[name] = now
+            try:
+                job()
+            except Exception as e:
+                log.warning("fx15 %s: %s", name, e)
 
 
 def run_forever():
@@ -165,7 +186,7 @@ def run_forever():
     user = next(u for u in users.load_users() if m.account_creds(u))
     acc = type("Acc", (), {"name": user.name, "creds": m.account_creds(user)})()
     broker = OandaBroker(st, acc)
-    done = None
+    done, last = None, {}
     while True:
         bar = (now_ms() - WAIT_AFTER_CLOSE_MS) // BAR
         if bar != done:
@@ -176,4 +197,5 @@ def run_forever():
                 notify("🚨 15m FX bot: a loop failed, retrying at the next candle (see the log)",
                        key="fx15fail", every_sec=3600, to=user)
             done = bar
+            housekeeping(st, now_ms(), last)       # after the trades: AI calls can take minutes
         time.sleep(5)

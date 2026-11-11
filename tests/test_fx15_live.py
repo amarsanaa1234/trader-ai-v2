@@ -82,6 +82,20 @@ def test_time_exit_and_stop_recorded(tmp_path, monkeypatch):
     assert b.closed == ["USD_JPY"] and live.s["trades"][-1]["reason"] == "session end"
 
 
+def test_housekeeping_runs_each_job_on_its_own_clock(tmp_path, monkeypatch):
+    from core import events, news, orb_learn
+    ran = []
+    monkeypatch.setattr(events, "refresh", lambda st: ran.append("calendar"))
+    monkeypatch.setattr(news, "fetch_headlines", lambda st: ran.append("news"))
+    monkeypatch.setattr(news, "score_news", lambda st: None)
+    monkeypatch.setattr(orb_learn, "step", lambda st, now: 1 / 0)          # a failing job must not stop the rest
+    st, last, t0 = Storage(tmp_path / "fx.db"), {}, 1_800_000_000_000
+    fx15_live.housekeeping(st, t0, last)
+    fx15_live.housekeeping(st, t0 + 20 * 60_000, last)
+    fx15_live.housekeeping(st, t0 + 31 * 60_000, last)
+    assert ran == ["calendar", "news", "news"] and set(last) == {"calendar", "news", "brain"}
+
+
 def test_exit_rules():
     d = {"session": "tokyo", "entry_ts": int(pd.Timestamp("2026-11-12 09:15", tz="Asia/Tokyo").timestamp() * 1000)}
     at = lambda s, tz: int(pd.Timestamp(s, tz=tz).timestamp() * 1000)          # noqa: E731
