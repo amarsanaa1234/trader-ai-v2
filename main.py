@@ -5,6 +5,7 @@
   python main.py users                   хэрэглэгчид (.env USER<n>_...), тэдний зах зээл, нууц үг
   python main.py user password <нэр>     вэбийн нууц үг тохируулах
   python main.py brain2                  2 дахь тархи: 1 цагийн лаан дээрх paper бот (зөвхөн харьцуулалт)
+  python main.py fx15                    15 минутын суралцдаг бот OANDA demo дансан дээр (FX_MODE=demo)
 
 Зах зээл тус бүр: python main.py <зах зээл> <команд>
 
@@ -260,6 +261,12 @@ def global_command(args) -> bool:
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
         from core import brain2
         brain2.run_forever()
+        return True
+    if args[:1] == ["fx15"]:
+        # the 15m learner trading the OANDA demo account (core/fx15_live.py; needs FX_MODE=demo)
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+        from core import fx15_live
+        fx15_live.run_forever()
         return True
     if args[:1] == ["users"]:
         everyone = users.load_users(markets.AVAILABLE)

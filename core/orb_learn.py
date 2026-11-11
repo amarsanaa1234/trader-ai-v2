@@ -52,6 +52,7 @@ DAY_MS, KEY = 86_400_000, "brain2_learn"
 BUCKETS = {"width": (0.8, 1.6), "trend": (0.3, 1.0), "vol": (0.8, 1.25)}
 
 
+OPEN_TS = 2 ** 62                 # exit time of a trade that is still open: never learned from
 SNAP_FIELDS = ("arm", "pair", "session", "side", "entry_ts", "exit_ts", "r", "width", "trend", "vol", "dow")
 
 
@@ -108,8 +109,10 @@ def step(st, now: int) -> dict | None:
     return b
 
 
-def candidates(df_raw: pd.DataFrame, pair: str, session: str) -> list[dict]:
-    """Every breakout trade the arm's fixed rule would take, with the situation it started in."""
+def candidates(df_raw: pd.DataFrame, pair: str, session: str, include_open: bool = False) -> list[dict]:
+    """Every breakout trade the arm's fixed rule would take, with the situation it started in.
+    include_open: also the trade still open at the last candle ("open": True, no result yet) -
+    the live executor needs the one that starts right now."""
     s = SESSIONS[session]
     df = orb15.features(df_raw)
     t = pd.to_datetime(df.ts, unit="ms", utc=True).dt.tz_convert(s["tz"])
@@ -129,7 +132,10 @@ def candidates(df_raw: pd.DataFrame, pair: str, session: str) -> list[dict]:
     dn &= (f < sl_) & (hc < f)
     d = np.zeros(len(df), np.int64)
     d[first & up], d[first & dn] = 1, -1
-    trades, _ = orb15.simulate(df, {"dir": d, "sl": a * orb15.P["k"], "x": mins >= s["flat"]}, PAIRS[pair])
+    trades, op = orb15.simulate(df, {"dir": d, "sl": a * orb15.P["k"], "x": mins >= s["flat"]}, PAIRS[pair])
+    if include_open and op:
+        trades = trades + [{"entry_ts": op["opened"], "exit_ts": OPEN_TS, "side": op["side"], "entry": op["entry"],
+                            "exit": None, "r": None, "reason": None, "open": True, "dist": op["dist"]}]
     ts = df.ts.to_numpy()
     out = []
     for tr in trades:
@@ -246,6 +252,8 @@ def replay(cands: list[dict], start: int, snapshot: list | None = None, ctx=None
         if tr["entry_ts"] >= start:
             book.append(rec)
     for p in sorted(pending, key=lambda p: p["exit_ts"]):   # whatever closed by the last candle
+        if p.get("open"):
+            continue
         known.append(p)
         if p["k"] in open_risk:
             pnl = p["r"] * open_risk.pop(p["k"])

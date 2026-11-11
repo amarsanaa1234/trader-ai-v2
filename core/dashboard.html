@@ -552,6 +552,20 @@ const tagName = (t) => {
   if (k === "side") return v === "long" ? "long" : "short";
   return `${TAG[k] || k} ${LVL[v] || v}`;
 };
+function liveHtml(L) {
+  if (!L) return "";
+  const pos = Object.entries(L.positions || {});
+  const tr = (L.trades || []).slice(-10).reverse();
+  const sumR = (L.trades || []).reduce((a, t) => a + (t.r || 0), 0);
+  const when = (ms) => new Date(ms).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"});
+  return `<div class="sub" style="margin-top:12px"><b>🟢 OANDA demo данс дээрх бодит арилжаа</b> · NAV ${fmt(L.nav)} · ${(L.trades || []).length} арилжаа ${fmt(sumR)}R</div>
+    ${pos.length ? `<table><thead><tr><th>Нээлттэй</th><th>Орсон</th><th>Stop</th><th>Итгэл</th></tr></thead><tbody>` +
+      pos.map(([p, q]) => `<tr><td>${esc(coin(p))} ${SESS[q.session] || q.session} <span class="sub">${q.side}</span></td><td>${fmtp(q.entry)}</td><td>${fmtp(q.stop)}</td><td>${pct(q.p)}</td></tr>`).join("") + `</tbody></table>`
+      : `<div class="empty">Одоо нээлттэй бодит арилжаа алга</div>`}
+    ${tr.length ? `<table style="margin-top:6px"><thead><tr><th>Хаагдсан</th><th>Хос</th><th>R</th><th>Ашиг</th><th>Шалтгаан</th></tr></thead><tbody>` +
+      tr.map(t => `<tr><td>${when(t.exit_ts)}</td><td>${esc(coin(t.pair))} ${SESS[t.session] || t.session} <span class="sub">${t.side}</span></td>
+        <td class="${cls(t.r)}">${fmt(t.r)}R</td><td class="${cls(t.pnl)}">${fmt(t.pnl)}</td><td>${esc(t.reason)}</td></tr>`).join("") + `</tbody></table>` : ""}`;
+}
 function aiHtml(b) {
   const r = b.risk_now;
   const hot = r ? Object.entries(r.levels || {}).filter(([, l]) => l === "high" || l === "extreme") : [];
@@ -588,7 +602,7 @@ function renderLearn(d) {
   $("lrn-mind").innerHTML = `<table><thead><tr><th>Ботын итгэл (30 гараас)</th><th>Дундаж</th><th>Ашигтай байх магадлал</th></tr></thead><tbody>
     ${trusted.join("") || `<tr><td colspan="3" class="sub">Одоогоор итгэлтэй гар алга</td></tr>`}${worst.join("")}</tbody></table>
     <div class="sub" style="margin-top:8px"><b>Муу арилжаанаас авсан сургамж:</b></div>
-    <ul style="margin:4px 0 0 18px">${lessons || "<li class='sub'>Одоогоор алга</li>"}</ul>` + aiHtml(b);
+    <ul style="margin:4px 0 0 18px">${lessons || "<li class='sub'>Одоогоор алга</li>"}</ul>` + liveHtml(d.learn_live) + aiHtml(b);
   const rows = (b.trades || []).slice(-15).reverse();
   $("lrn-trades").innerHTML = rows.length ? `<table><thead><tr><th>Хаагдсан</th><th>Гар</th><th>R</th><th>Шийдвэр</th></tr></thead><tbody>` +
     rows.map(t => `<tr><td>${new Date(t.ts).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}${t.live ? " 🟢" : ""}</td>

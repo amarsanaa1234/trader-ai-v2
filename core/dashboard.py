@@ -93,6 +93,7 @@ def data(user: str) -> dict:
         "tf_compare": tf_compare(st, mode, user),
         "orb15": st.get("brain2_orb15") if m.name == "fx" else None,   # 15m paper bot (core/orb15.py)
         "learn15": st.get("brain2_learn") if m.name == "fx" else None,  # 15m learner (core/orb_learn.py)
+        "learn_live": st.get("fx15_live") if m.name == "fx" else None,  # its OANDA demo trades (core/fx15_live.py)
         **m.dashboard_extras(st),   # market-specific panels
     }
 
