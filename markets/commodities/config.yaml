@@ -21,7 +21,6 @@ book_days: 730          # OANDA crowd history (gold only; others have no book)
 book_every_hours: 6
 paper_start_equity: 10000
 entry_threshold: 2.0     # owner, 2026-10-26: fixed, the self-improver never changes it
-max_hold_days: 5        # owner, 2026-10-26: close a trade after 5 days at most (tools/hold_test.py: best of 3..21)
 entry_order: maker
 
 htf:

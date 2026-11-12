@@ -89,7 +89,8 @@ def data(user: str) -> dict:
         "blackout": {"before_min": BLACKOUT_BEFORE_MIN, "after_min": BLACKOUT_AFTER_MIN, "now": events.blackout(st),
                      # which instruments it actually pauses (FX: only pairs with that currency)
                      "symbols": [s for s in m.symbols if events.blackout(st, symbol=s)]},
-        "drift": drift(st, user),
+        # FX: the warning compared the retired 4h bot's trades with its backtest - not the 15m bot
+        "drift": drift(st, user) if m.name != "fx" else {"warning": False},
         "tf_compare": tf_compare(st, mode, user),
         # FX's main bot (owner 2026-11-12): the 15m learner's brain and its OANDA demo trades
         "learn15": st.get("brain2_learn") if m.name == "fx" else None,
