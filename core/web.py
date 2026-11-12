@@ -97,6 +97,80 @@ pre { padding:10px; overflow-x:auto; }
 """
 
 
+# Look (owner, 2026-11-12): modern and minimal, easy on the eyes but with colour. Loaded after each
+# page's own styles (web pages and the market dashboards), so it restyles everything in one place.
+FONT_LINK = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
+             '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">')
+THEME = """
+:root { --bg:#f4f6fb; --card:#ffffff; --card2:#f8fafd; --text:#111827; --muted:#6b7488; --line:#e7ebf3;
+        --accent:#5b5bd6; --accent2:#0ea5a4; --accent-soft:#ecebff; --up:#0f9f6e; --down:#e5484d;
+        --warn-bg:#fff6e0; --warn:#9a6700; --shadow:0 1px 2px rgba(17,24,39,.04),0 6px 24px rgba(17,24,39,.05); }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#0d1117; --card:#141a23; --card2:#18202b; --text:#e6e9ef; --muted:#8b94a7; --line:#232c39;
+          --accent:#8b8cff; --accent2:#2ec4b6; --accent-soft:rgba(139,140,255,.14); --up:#3ecf8e; --down:#ff6b81;
+          --warn-bg:rgba(251,191,36,.12); --warn:#fbbf24; --shadow:none; } }
+[hidden] { display:none !important; }   /* "hidden" must win over .grid / .row display rules */
+html { -webkit-font-smoothing:antialiased; }
+body { background:var(--bg) !important; color:var(--text);
+       font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif !important; letter-spacing:-.005em; }
+main, main.page { max-width:1180px; }
+h1 { font-size:24px !important; font-weight:700; letter-spacing:-.02em; }
+h2 { font-size:15px !important; font-weight:600; letter-spacing:-.01em; }
+.muted, .sub { color:var(--muted) !important; }
+.card { background:var(--card) !important; border:1px solid var(--line) !important; border-radius:16px !important;
+        box-shadow:var(--shadow); padding:18px !important; }
+.card .card { box-shadow:none; background:var(--card2) !important; border-radius:12px !important; padding:14px !important; }
+a.card:hover { border-color:var(--accent) !important; transform:translateY(-1px); transition:all .15s ease; }
+.grid { gap:14px !important; }
+.row { gap:14px !important; margin-bottom:14px !important; }
+.kpi .label { font-size:11.5px !important; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:var(--muted); }
+.kpi .value, .big { font-size:26px !important; font-weight:700 !important; letter-spacing:-.02em; margin-top:6px; }
+.up { color:var(--up) !important; } .down { color:var(--down) !important; }
+table { font-size:13.5px; }
+th { font-size:11px !important; text-transform:uppercase; letter-spacing:.06em; font-weight:600 !important;
+     color:var(--muted) !important; border-bottom:1px solid var(--line) !important; padding:8px 10px !important; }
+td { border-bottom:1px solid var(--line) !important; padding:9px 10px !important; }
+tbody tr:last-child td { border-bottom:0 !important; }
+tbody tr:hover td { background:var(--accent-soft); }
+.banner, .note { background:var(--warn-bg) !important; color:var(--warn) !important; border:0; border-radius:12px !important; }
+.ok { background:var(--accent-soft) !important; border-radius:12px !important; }
+.badge, .pill, .chip { background:var(--accent-soft) !important; border:0 !important; color:var(--accent); font-weight:500; }
+.badge.up { background:rgba(16,185,129,.12) !important; color:var(--up); }
+.badge.down { background:rgba(244,63,94,.12) !important; color:var(--down); }
+.bar { background:var(--line) !important; } .bar > span { background:linear-gradient(90deg,var(--accent),var(--accent2)) !important; }
+.q { border-color:var(--line) !important; color:var(--muted) !important; background:var(--card2) !important; }
+.q:hover { color:var(--accent) !important; border-color:var(--accent) !important; }
+.help { background:var(--card2) !important; border:1px solid var(--line); border-radius:12px !important; }
+.empty { color:var(--muted); font-size:13px; }
+.sheet { border-radius:18px !important; background:var(--card) !important; }
+input { border-radius:10px !important; border:1px solid var(--line) !important; background:var(--card2) !important; }
+input:focus { outline:none; border-color:var(--accent) !important; box-shadow:0 0 0 3px var(--accent-soft); }
+button:not(.q):not(.x) { border-radius:10px !important; font-weight:600;
+         background:linear-gradient(135deg,var(--accent),#7c5cff) !important; color:#fff !important; }
+a { color:var(--accent); }
+a.btn { border-radius:10px !important; border-color:var(--line) !important; background:var(--card2); }
+.tai-nav { background:color-mix(in srgb, var(--card) 82%, transparent) !important; backdrop-filter:saturate(1.4) blur(12px);
+           -webkit-backdrop-filter:saturate(1.4) blur(12px); border-bottom:1px solid var(--line) !important; }
+.tai-nav .in { padding:10px 16px !important; }
+.tai-nav .brand { font-weight:700; letter-spacing:-.02em;
+                  background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text;
+                  background-clip:text; color:transparent !important; }
+.tai-nav a.item { border-radius:999px !important; color:var(--muted) !important; font-weight:500; }
+.tai-nav a.item:hover { color:var(--text) !important; background:var(--card2) !important; }
+.tai-nav a.item.on { background:var(--accent-soft) !important; color:var(--accent) !important; }
+::selection { background:var(--accent-soft); }
+@media (max-width:640px) {
+  .tai-nav .in { flex-wrap:nowrap !important; overflow-x:auto; scrollbar-width:none; gap:4px !important; }
+  .tai-nav .in::-webkit-scrollbar { display:none; }
+  .tai-nav a.item, .tai-nav .brand { flex:none; }
+  .tai-nav .who { width:auto !important; margin-left:8px !important; flex:none; }
+  #kpis, [id$="-kpi"] { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; gap:10px !important; }
+  .kpi { padding:12px !important; } .kpi .value { font-size:20px !important; }
+  .card { padding:14px !important; border-radius:14px !important; }
+}
+"""
+
+
 def esc(x) -> str:
     return html.escape(str(x if x is not None else ""))
 
@@ -118,7 +192,7 @@ def page(title: str, body: str, user=None, active: str = "") -> HTMLResponse:
     top = nav(user, active) if user else ""
     return HTMLResponse(f"""<!doctype html><html lang="mn"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(title)} · Trader AI</title>
-<style>{CSS}</style></head><body>{top}<main class="page">{body}</main></body></html>""",
+{FONT_LINK}<style>{CSS}{THEME}</style></head><body>{top}<main class="page">{body}</main></body></html>""",
                         headers={"Cache-Control": "no-store"})
 
 
@@ -213,7 +287,8 @@ def market_page(name: str, request: Request):
     if name not in visible_markets(user) or who is None:
         return page("Хандах эрхгүй", "<h1>Хандах эрхгүй</h1>", user)
     api = f"/api/m/{name}/data?user={who}"
-    inject = f"<style>{NAV_CSS}</style>{nav(user, name)}<script>window.API_URL = {json.dumps(api)};</script>"
+    inject = (f"{FONT_LINK}<style>{NAV_CSS}{THEME}</style>{nav(user, name)}"
+              f"<script>window.API_URL = {json.dumps(api)};</script>")
     if who != user.name:
         inject += f'<div style="max-width:1200px;margin:8px auto;padding:0 16px" class="muted">👑 {esc(who)}-ийн данс</div>'
     text = MARKET_PAGE.read_text(encoding="utf-8")
