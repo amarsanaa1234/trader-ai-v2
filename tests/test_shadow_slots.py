@@ -1,4 +1,4 @@
-"""With a month-long shadow test, a new candidate must never push out a shadow
+"""With a two-week shadow test, a new candidate must never push out a shadow
 that is still being tested."""
 import os
 import tempfile
@@ -38,5 +38,5 @@ def test_shadow_clearly_behind_live_after_two_weeks_frees_its_place(monkeypatch)
     assert [s["id"] for s in shadow.get(st)] == ["young", "close"]   # too young / not clearly behind: kept
 
 
-def test_shadow_test_is_a_month():
-    assert shadow.SHADOW_MIN_DAYS == 30 and shadow.MAX_AGE_DAYS > shadow.SHADOW_MIN_DAYS
+def test_shadow_test_is_two_weeks():
+    assert shadow.SHADOW_MIN_DAYS == 14 and shadow.MAX_AGE_DAYS > shadow.SHADOW_MIN_DAYS

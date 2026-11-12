@@ -15,9 +15,11 @@ log = logging.getLogger(__name__)
 DAY_MS = 86_400_000
 MAX_SHADOWS = 6
 MAX_AGE_DAYS = SHADOW_MIN_DAYS + 30   # a shadow gets a month past the minimum to collect enough trades
+                                     # (minimum two weeks since 2026-11-12, owner)
 MIN_FORWARD_TRADES = 6
 PROMOTE_MARGIN = 0.3
 EARLY_DROP_DAYS = 14   # owner 2026-11-10: a shadow clearly behind live by then frees its place early
+                       # (equal to the two-week minimum since 2026-11-12: decided either way at day 14)
 
 
 def get(st) -> list[dict]:

@@ -124,7 +124,10 @@ a.card:hover { border-color:var(--accent) !important; transform:translateY(-1px)
 .grid { gap:14px !important; }
 .row { gap:14px !important; margin-bottom:14px !important; }
 .kpi .label { font-size:11.5px !important; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:var(--muted); }
-.kpi .value, .big { font-size:26px !important; font-weight:700 !important; letter-spacing:-.02em; margin-top:6px; }
+.kpi { overflow:hidden; }
+.kpi .value, .big { font-size:clamp(18px, 1vw + 12px, 24px) !important; font-weight:700 !important; letter-spacing:-.02em;
+                    margin-top:6px; line-height:1.2; overflow-wrap:break-word; }
+.kpi .value .word { display:block; font-size:15px; font-weight:600; letter-spacing:0; margin-top:4px; color:var(--text); }
 .up { color:var(--up) !important; } .down { color:var(--down) !important; }
 table { font-size:13.5px; }
 th { font-size:11px !important; text-transform:uppercase; letter-spacing:.06em; font-weight:600 !important;
@@ -165,7 +168,7 @@ a.btn { border-radius:10px !important; border-color:var(--line) !important; back
   .tai-nav a.item, .tai-nav .brand { flex:none; }
   .tai-nav .who { width:auto !important; margin-left:8px !important; flex:none; }
   #kpis, [id$="-kpi"] { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; gap:10px !important; }
-  .kpi { padding:12px !important; } .kpi .value { font-size:20px !important; }
+  .kpi { padding:12px !important; } .kpi .value { font-size:18px !important; }
   .card { padding:14px !important; border-radius:14px !important; }
 }
 """

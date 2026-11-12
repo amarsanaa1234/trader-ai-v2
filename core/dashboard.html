@@ -613,8 +613,8 @@ async function load() {
     ["Equity", fmt(d.equity) + " USDT", ""],
     ["Өнөөдөр", pct(dayChg), cls(dayChg)],
     ["Оргилоос уналт", pct(-d.drawdown), cls(-d.drawdown)],
-    ["Допамин", `${fmt(d.dopamine)} ${d.mood}`, cls(d.dopamine)],
-    ["Төлөв", state, ""],
+    ["Допамин", `${fmt(d.dopamine)}<span class="word">${d.mood}</span>`, cls(d.dopamine)],
+    ["Төлөв", `<span class="word">${state}</span>`, ""],
     ["Туршилтын хугацаа", paperDays, ""],
   ].map(([l, v, c]) => `<div class="card kpi"><div class="label">${l}</div><div class="value ${c}">${v}</div></div>`).join("");
 
