@@ -32,7 +32,7 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
         cst = m.costs_for(sym)
         S[sym] = {"ts": df.index.to_numpy(), "o": df["open"].to_numpy(), "h": df["high"].to_numpy(),
                   "l": df["low"].to_numpy(), "c": df["close"].to_numpy(), "fund": df["hold_cost"].to_numpy(),
-                  "sig": f["signal"].to_numpy(), "atr": f["atr"].to_numpy(),
+                  "sig": f["signal"].to_numpy(), "atr": f["atr"].to_numpy(), "score": f["score"].to_numpy() if "score" in f else np.full(len(df), np.nan),
                   "force": np.asarray(m.force_exit(df.index, p), dtype=bool),
                   "maker": cst["maker"], "taker": cst["taker"], "slip": cst["slippage"],
                   "through": cst.get("fill_through", 0.0)}
@@ -43,6 +43,7 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
     offset = p.get("entry_offset_atr", 0.0) if maker_entry else 0.0
     max_hold = int(p["max_hold_bars"])
     wait = entry_wait_candles()
+    tp_ext = bool(m.cfg.get("tp_extend"))
 
     equity = peak = start_equity
     pos, pend, last_close = {}, {}, {}
@@ -70,7 +71,7 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
         if reason:
             net = q["realized"] - q["cost"]
             trades.append({"symbol": sym, "ts": t, "side": q["side"], "pnl": net, "r": net / q["risk"],
-                           "reason": reason})
+                           "reason": reason, "ext": q.get("ext", 0)})
             del pos[sym]
 
     for t in timeline:
@@ -132,7 +133,14 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
                     if q["partial"] is not None and ((h >= q["partial"]) if side == 1 else (l <= q["partial"])):
                         close_part(sym, q["qty"] / 2, q["partial"], s["maker"])
                         q["partial"] = None
-                    if (h >= q["tp"]) if side == 1 else (l <= q["tp"]):
+                    ext = exits.tp_extension(side, q["tp"], q["stop"], q["dist"], h if side == 1 else l,
+                                             s["score"][i - 1], p["entry_threshold"]) if tp_ext else None
+                    if ext:   # fixed rule (exits.tp_extension): stop near the TP, TP pushed out
+                        q["tp"], q["stop"] = ext
+                        q["ext"] = q.get("ext", 0) + 1
+                        if (c <= q["stop"]) if side == 1 else (c >= q["stop"]):   # candle closed back past it
+                            close_part(sym, q["qty"], q["stop"] * (1 - slip * side), taker, "stop_after_partial", t)
+                    elif (h >= q["tp"]) if side == 1 else (l <= q["tp"]):
                         close_part(sym, q["qty"], q["tp"], s["maker"], "tp", t)
                     elif i - q["bar"] >= max_hold:
                         close_part(sym, q["qty"], c * (1 - slip * side), taker, "time", t)

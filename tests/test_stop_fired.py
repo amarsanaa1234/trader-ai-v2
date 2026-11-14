@@ -19,7 +19,8 @@ def fake(price, has_stop=False):
         st=SimpleNamespace(update_trade=lambda *a, **k: updates.append(k), open_carries=lambda *a: []),
         acc=SimpleNamespace(name="amar", get=lambda k: None),
         close_trade=lambda tr, reason: closed.append(reason) or True,
-        finish_trade=lambda *a: None, to=lambda: None)
+        finish_trade=lambda *a: None, to=lambda: None,
+        extend_tp=lambda *a: False)
     return me, closed, updates, placed
 
 

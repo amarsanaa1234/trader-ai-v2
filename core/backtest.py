@@ -78,6 +78,8 @@ def run(df: pd.DataFrame, params: dict, start: int = 0, end: int | None = None,
     entry_order = entry_order or mkt().entry_order
     sig = feats["signal"].to_numpy()
     atr = feats["atr"].to_numpy()
+    tp_ext = bool(mkt().cfg.get("tp_extend")) and "score" in feats
+    score = feats["score"].to_numpy() if tp_ext else None
     force = np.asarray(mkt().force_exit(df.index, params), dtype=bool)   # e.g. flat before the FX weekend
     maker = entry_order == "maker"
     offset = params.get("entry_offset_atr", 0.0) if maker else 0.0
@@ -158,7 +160,14 @@ def run(df: pd.DataFrame, params: dict, start: int = 0, end: int | None = None,
                 if pos["partial"] is not None and (h[i] >= pos["partial"] if side == 1 else l[i] <= pos["partial"]):
                     close_part(pos["qty"] / 2, pos["partial"], MAKER_FEE)
                     pos["partial"] = None
-                if h[i] >= pos["tp"] if side == 1 else l[i] <= pos["tp"]:
+                ext = exits.tp_extension(side, pos["tp"], pos["stop"], pos["dist"], h[i] if side == 1 else l[i],
+                                         score[i - 1], params["entry_threshold"]) if tp_ext else None
+                if ext:   # fixed rule (exits.tp_extension): stop near the TP, TP pushed out
+                    pos["tp"], pos["stop"] = ext
+                    if c[i] <= pos["stop"] if side == 1 else c[i] >= pos["stop"]:   # candle closed back past it
+                        close_part(pos["qty"], pos["stop"] * (1 - SLIPPAGE * side), TAKER_FEE, "stop_after_partial")
+                        pos = None
+                elif h[i] >= pos["tp"] if side == 1 else l[i] <= pos["tp"]:
                     close_part(pos["qty"], pos["tp"], MAKER_FEE, "tp")
                     pos = None
                 elif i - pos["bar"] >= max_hold:

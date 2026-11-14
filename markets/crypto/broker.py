@@ -110,6 +110,12 @@ class PaperBroker:
         p = self.s["positions"].get(symbol)
         return bool(p and p["stop"])
 
+    def move_tp(self, symbol, side, qty, new_tp):
+        p = self.s["positions"].get(symbol)
+        if p:
+            p["tp"] = new_tp
+            self._save()
+
     def place_stop(self, symbol, side, qty, stop):
         self.move_stop(symbol, side, qty, stop)
 
@@ -380,6 +386,19 @@ class BinanceBroker:
                     self.ex.cancel_order(o["id"], symbol, params={"trigger": True})
                 except Exception as e:
                     log.warning("%s хуучин stop цуцалж чадсангүй: %s", symbol, e)
+
+    def move_tp(self, symbol, side, qty, new_tp):
+        """Replace the resting take-profit limit (reduce-only, non-trigger) with one at new_tp."""
+        for o in self.ex.fetch_open_orders(symbol):
+            info = o.get("info", {})
+            if str(o.get("type", "")).lower() == "limit" and (o.get("reduceOnly") or info.get("reduceOnly")):
+                try:
+                    self.ex.cancel_order(o["id"], symbol)
+                except Exception as e:
+                    log.warning("%s хуучин TP цуцалж чадсангүй: %s", symbol, e)
+        self.ex.create_order(symbol, "limit", "sell" if side == 1 else "buy",
+                             float(self.ex.amount_to_precision(symbol, qty)), self._px(symbol, new_tp),
+                             {"reduceOnly": True})
 
     def cancel_protection(self, symbol):
         for params in ({"trigger": True}, {}):

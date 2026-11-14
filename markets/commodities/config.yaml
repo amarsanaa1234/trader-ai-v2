@@ -21,6 +21,7 @@ book_days: 730          # OANDA crowd history (gold only; others have no book)
 book_every_hours: 6
 paper_start_equity: 10000
 entry_threshold: 2.0     # owner, 2026-10-26: fixed, the self-improver never changes it
+tp_extend: true          # owner, 2026-11-15: fixed rule, see core/exits.tp_extension (never tuned)
 entry_order: maker
 
 htf:

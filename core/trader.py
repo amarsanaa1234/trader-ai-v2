@@ -200,6 +200,39 @@ class Trader:
                         hours, rew, dop, reward.mood_en(dop)), to=self.to())
         _review_async(trade, self.to())
 
+    def extend_tp(self, t: dict, side: int, px: float, positions: dict) -> bool:
+        """Fixed rule (core/exits.tp_extension, markets with tp_extend: true): near the TP and the
+        score still agrees -> stop to 0.15R behind the TP, TP 1R further. True if it moved them."""
+        if not self.m.cfg.get("tp_extend"):
+            return False
+        sym = t["symbol"]
+        dist = t["dist"] or (t["risk_usd"] / t["qty"] if t["qty"] else 0.0)
+        ext = exits.tp_extension(side, t["tp"], t["stop"], dist, px, self.st.get(f"score:{sym}"),
+                                 self.params["entry_threshold"])
+        if not ext:
+            return False
+        new_tp, new_stop = ext
+        qty = positions[sym]["qty"]
+        try:
+            if (new_stop - t["stop"]) * side > 0:
+                self.broker.move_stop(sym, side, qty, new_stop)
+        except Exception as e:
+            log.warning("%s/%s TP сунгахад stop шилжүүлж чадсангүй: %s", self.acc.name, sym, e)
+            return False      # leave the trade as it was; the TP check below still applies
+        self.st.update_trade(t["id"], stop=new_stop, tp=new_tp)
+        try:
+            self.broker.move_tp(sym, side, qty, new_tp)
+        except Exception as e:   # the bot watches the TP itself anyway (reconcile)
+            log.warning("%s/%s шинэ TP захиалга тавьж чадсангүй: %s", self.acc.name, sym, e)
+        r_tp = (new_tp - t["entry"]) * side / dist if dist else 0.0
+        r_stop = (new_stop - t["entry"]) * side / dist if dist else 0.0
+        score = self.st.get(f"score:{sym}")
+        notify(f"🚀 TP EXTENDED\n{sym.split('/')[0]} {'LONG 📈' if side == 1 else 'SHORT 📉'}\n"
+               f"The score still points our way ({score:+.2f}), so we keep riding it.\n"
+               f"New TP:   {new_tp:,.6g}  (+{r_tp:.2f}R)\nNew stop: {new_stop:,.6g}  (locks {r_stop:+.2f}R)",
+               to=self.to())
+        return True
+
     def directional(self, positions: dict) -> dict:
         return {s: p for s, p in positions.items() if s in self.m.symbols}
 
@@ -224,6 +257,8 @@ class Trader:
             # The take-profit is a resting limit order, but Binance demo sometimes rejects it
             # (-2022) and BNB/BTC/SOL then ran past their TP for days (2026-11-09). So the bot
             # also watches the price itself and closes once the TP is reached.
+            if t["tp"] and self.m.is_open() and px is not None and self.extend_tp(t, side, px, positions):
+                continue
             if t["tp"] and self.m.is_open():
                 if px is not None and side * (px - t["tp"]) >= 0:
                     log.warning("%s/%s TP %s хүрсэн (одоо %s) ч биржид хаагдаагүй -> хааж байна",
@@ -490,6 +525,7 @@ class Trader:
             if not sig or sig["bar_ts"] == self.st.get(f"bar:{sym}"):
                 continue
             self.st.set(f"bar:{sym}", sig["bar_ts"])
+            self.st.set(f"score:{sym}", sig["score"])   # read by the TP extension between candles
             regime = {1: "trend", -1: "range", 0: "дунд"}[sig["regime"]]
             log.info("%s оноо=%+.2f дохио=%s regime=%s%s %s", sym, sig["score"], sig["signal"], regime,
                      " (хэт хэлбэлзэлтэй)" if sig["volatile"] else "", sig["parts"])

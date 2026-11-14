@@ -165,6 +165,12 @@ class PaperBroker:
         p = self.s["positions"].get(symbol)
         return bool(p and p["stop"])
 
+    def move_tp(self, symbol, side, qty, new_tp):
+        p = self.s["positions"].get(symbol)
+        if p:
+            p["tp"] = new_tp
+            self._save()
+
     def place_stop(self, symbol, side, qty, stop):
         self.move_stop(symbol, side, qty, stop)
 
@@ -356,6 +362,11 @@ class OandaBroker:
         for t in self._trades(symbol):
             self.c.req("PUT", self.c.acct(f"/trades/{t['id']}/orders"),
                        json={"stopLoss": {"price": self._px(symbol, new_stop), "timeInForce": "GTC"}})
+
+    def move_tp(self, symbol, side, qty, new_tp):
+        for t in self._trades(symbol):
+            self.c.req("PUT", self.c.acct(f"/trades/{t['id']}/orders"),
+                       json={"takeProfit": {"price": self._px(symbol, new_tp), "timeInForce": "GTC"}})
 
     def cancel_protection(self, symbol):
         """Cancels leftover stand-alone orders (the partial take-profit). Orders attached
