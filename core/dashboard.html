@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crypto AI Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root {
     --bg: #f6f7f9; --card: #ffffff; --text: #16181d; --muted: #6b7280; --line: #e5e7eb;
@@ -80,6 +81,16 @@
   @media (max-width: 600px) { .modal { align-items: flex-end; padding: 0; }
     .sheet { border-radius: 14px 14px 0 0; max-height: 88vh; } }
   tr.click { cursor: pointer; }
+  .pc-box { height: 320px; margin-top: 10px; }
+  .pc-tfs { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  #modal .pc-tfs button { border: 1px solid var(--line) !important; background: transparent !important;
+                   background-image: none !important; color: var(--muted) !important; border-radius: 8px; box-shadow: none !important;
+                   padding: 3px 10px; cursor: pointer; font: inherit; font-size: 12.5px; }
+  #modal .pc-tfs button.on { border-color: var(--accent) !important; background: var(--accent) !important; color: #fff !important; }
+  .pc-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 12.5px; }
+  .pc-btn { border: 1px solid var(--accent); background: transparent; color: var(--accent); border-radius: 8px;
+            padding: 4px 12px; cursor: pointer; font: inherit; font-size: 13px; margin-top: 6px; }
+  @media (max-width: 600px) { .pc-box { height: 280px; } }
   tr.click:hover td { background: var(--bg); }
   td.wrap2 { white-space: normal; min-width: 130px; }
   .bar.mini { height: 4px; width: 70px; margin: 3px 0; }
@@ -196,7 +207,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&l
 // ---- popup (modal): "?" buttons and clickable rows ----
 const DETAIL = {};
 function openModal(html) { $("modal-body").innerHTML = html; $("modal").hidden = false; document.body.style.overflow = "hidden"; }
-function closeModal() { $("modal").hidden = true; document.body.style.overflow = ""; }
+function closeModal() { $("modal").hidden = true; document.body.style.overflow = ""; if (typeof dropChart === "function") dropChart(); }
 document.addEventListener("click", (e) => {
   const q = e.target.closest(".q");
   if (q) { openModal($(q.dataset.help).innerHTML); return; }
@@ -206,6 +217,105 @@ document.addEventListener("click", (e) => {
   if (r && DETAIL[r.dataset.detail]) openModal(DETAIL[r.dataset.detail]);
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+// ---- price chart popup (owner 2026-11-15): candles + entry / SL / TP lines ----
+// TradingView Lightweight Charts draws in the browser; the server only sends the candles it already stores.
+const CHART = {};
+let pcChart = null, pcTrade = null;
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-chart]");
+  if (b && CHART[b.dataset.chart]) { e.stopPropagation(); showChart(CHART[b.dataset.chart]); }
+}, true);
+const TFN = {"15m": "15м", "1h": "1ц", "4h": "4ц", "1d": "1ө"};
+function pxDigits(p) { p = Math.abs(p || 0); return p >= 1000 ? 2 : p >= 10 ? 3 : p >= 1 ? 4 : 5; }
+function chartBtn(key, t) {
+  if (!window.CANDLES_URL || !t || !t.symbol) return "";
+  CHART[key] = t;
+  return `<button class="pc-btn" data-chart="${key}">📈 Лааны график</button>`;
+}
+function dropChart() { if (pcChart) { pcChart.remove(); pcChart = null; } }
+async function showChart(t, tf) {
+  pcTrade = t;
+  const side = t.side === "long" || t.side === 1 ? 1 : -1;
+  if (!tf) {
+    dropChart();
+    openModal(`<h3>📈 ${esc(coin(t.symbol))} ${side === 1 ? "LONG 📈" : "SHORT 📉"}${t.title ? " · " + esc(t.title) : ""}</h3>
+      <div class="pc-tfs" id="pc-tfs"></div><div class="pc-box" id="pc-box"><div class="empty">Ачаалж байна…</div></div>
+      <div class="pc-legend" id="pc-legend"></div>`);
+  }
+  let d;
+  try {
+    const q = new URLSearchParams({symbol: t.symbol, limit: 300});
+    if (tf) q.set("tf", tf);
+    if (t.exit_ts) {   // a closed trade: candles up to a while after the exit
+      const bar = {"15m": 9e5, "1h": 36e5, "4h": 144e5, "1d": 864e5}[tf || window.MARKET_TF] || 36e5;
+      q.set("until", t.exit_ts + 40 * bar);
+    }
+    d = await (await fetch(window.CANDLES_URL + "?" + q)).json();
+  } catch (e) { if ($("pc-box")) $("pc-box").innerHTML = `<div class="empty">График ачаалж чадсангүй</div>`; return; }
+  if (pcTrade !== t || !$("pc-box") || $("modal").hidden) return;
+  $("pc-tfs").innerHTML = (d.tfs || []).map(x => `<button class="${x === d.tf ? "on" : ""}" data-tf="${x}">${TFN[x] || x}</button>`).join("");
+  $("pc-tfs").onclick = (e) => { const b = e.target.closest("[data-tf]"); if (b) showChart(t, b.dataset.tf); };
+  if (!d.candles || !d.candles.length || !window.LightweightCharts) {
+    $("pc-box").innerHTML = `<div class="empty">Энэ хэрэглүүрийн лааны дата алга</div>`; return;
+  }
+  const css = getComputedStyle(document.documentElement), v = (n) => css.getPropertyValue(n).trim();
+  const up = v("--up") || "#26a69a", down = v("--down") || "#ef5350", muted = v("--muted") || "#888",
+        line = v("--line") || "#333", accent = v("--accent") || "#5b5bd6", warn = "#f59e0b";
+  const shift = -new Date().getTimezoneOffset() * 60;      // the chart shows the viewer's local time
+  const T = (ms) => Math.floor(ms / 1000) + shift;
+  dropChart();
+  $("pc-box").innerHTML = "";
+  pcChart = LightweightCharts.createChart($("pc-box"), {
+    autoSize: true, layout: {background: {type: "solid", color: "transparent"}, textColor: muted},
+    grid: {vertLines: {color: line}, horzLines: {color: line}}, rightPriceScale: {borderColor: line},
+    timeScale: {borderColor: line, timeVisible: true, secondsVisible: false},
+    crosshair: {mode: LightweightCharts.CrosshairMode.Normal},
+  });
+  const digits = pxDigits(t.entry || d.candles[d.candles.length - 1][4]);
+  const series = pcChart.addCandlestickSeries({upColor: up, downColor: down, borderVisible: false,
+    wickUpColor: up, wickDownColor: down, priceLineVisible: false, priceFormat: {type: "price", precision: digits, minMove: Math.pow(10, -digits)}});
+  series.setData(d.candles.map(c => ({time: T(c[0]), open: c[1], high: c[2], low: c[3], close: c[4]})));
+  const keep = [t.entry, t.stop, t.tp, t.exit].filter(x => x);   // keep every line inside the price scale
+  series.applyOptions({autoscaleInfoProvider: (orig) => {
+    const r = orig();
+    if (r && r.priceRange && keep.length) {
+      r.priceRange.minValue = Math.min(r.priceRange.minValue, ...keep);
+      r.priceRange.maxValue = Math.max(r.priceRange.maxValue, ...keep);
+    }
+    return r;
+  }});
+  const risk = t.entry && (t.stop0 || t.stop) ? Math.abs(t.entry - (t.stop0 || t.stop)) : null;
+  const rOf = (px) => { if (!risk) return ""; const r = (px - t.entry) * side / risk; return ` ${r >= 0 ? "+" : ""}${r.toFixed(2)}R`; };
+  const lines = [];
+  if (t.entry) lines.push([t.entry, accent, 2]);
+  if (t.stop) lines.push([t.stop, warn, 0]);
+  if (t.tp) lines.push([t.tp, up, 0]);
+  if (t.exit) lines.push([t.exit, muted, 1]);
+  // names stay in the legend under the chart, so the lines' labels don't pile up on each other
+  lines.forEach(([price, color, style]) => series.createPriceLine({price, color, lineWidth: 2, lineStyle: style,
+    axisLabelVisible: true, title: ""}));
+  // markers snap to the candle that contains the time
+  const snapI = (ms) => { let k = -1; for (let i = 0; i < d.candles.length && d.candles[i][0] <= ms; i++) k = i; return k; };
+  const iE = t.entry_ts ? snapI(t.entry_ts) : -1, iX = t.exit_ts ? snapI(t.exit_ts) : -1;
+  const marks = [];
+  if (iE >= 0) marks.push({time: T(d.candles[iE][0]), position: side === 1 ? "belowBar" : "aboveBar", color: accent,
+                           shape: side === 1 ? "arrowUp" : "arrowDown"});
+  if (iX >= 0) marks.push({time: T(d.candles[iX][0]), position: side === 1 ? "aboveBar" : "belowBar", color: muted,
+                           shape: "circle"});
+  if (marks.length) series.setMarkers(marks.sort((a, b) => a.time - b.time));
+  pcChart.timeScale().fitContent();
+  if (iE >= 0) {   // zoom to the trade: a bit before the entry up to the exit (or now)
+    const end = iX >= 0 ? iX : d.candles.length - 1;
+    pcChart.timeScale().setVisibleLogicalRange({from: Math.max(0, iE - 30), to: Math.max(end, iE) + 10});
+  }
+  const last = d.candles[d.candles.length - 1][4];
+  $("pc-legend").innerHTML = [t.entry ? `<span style="color:${accent}">${side === 1 ? "▲" : "▼"} Орсон ${fmtp(t.entry)}</span>` : "",
+    t.stop ? `<span style="color:${warn}">━ SL ${fmtp(t.stop)}${rOf(t.stop)}</span>` : "",
+    t.tp ? `<span style="color:${up}">━ TP ${fmtp(t.tp)}${rOf(t.tp)}</span>` : "",
+    t.exit ? `<span class="sub">● Гарсан ${fmtp(t.exit)}${rOf(t.exit)}</span>`
+           : `<span class="sub">Одоо ${fmtp(last)}${rOf(last)}</span>`].join("");
+}
 
 // ---- economic calendar ----
 const EVENT_INFO = [
@@ -420,6 +530,9 @@ function renderTrades(d) {
         <tr><td>Дүн</td><td class="${cls(t.pnl)}">${fmt(t.pnl)} $ (${fmt(t.r_multiple)}R)</td></tr>
         <tr><td>Шагнал</td><td>${fmt(t.reward)}</td></tr></tbody></table>
       ${parts ? `<p><b>Нээх үеийн гол шалтгаан:</b></p><div class="chips">${parts}</div>` : ""}
+      ${chartBtn("ct" + i, {symbol: t.symbol, side: t.side, entry: t.entry, stop: t.stop, tp: t.tp, exit: t.exit,
+        entry_ts: t.opened_ts, exit_ts: t.closed_ts, stop0: t.entry && t.dist ? t.entry - (t.side === "long" ? 1 : -1) * t.dist : null,
+        title: (t.pnl > 0 ? "✅ " : "🔻 ") + fmt(t.r_multiple) + "R"})}
       ${t.review ? `<p><b>📝 Дүгнэлт:</b></p><pre style="white-space:pre-wrap;font:inherit;margin:0">${esc(t.review)}</pre>` : ""}`;
     return `<tr class="click" data-detail="${key}">
       <td>${new Date(t.closed_ts).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}</td>
@@ -508,6 +621,7 @@ const tagName = (t) => {
   if (k === "side") return v === "long" ? "long" : "short";
   return `${TAG[k] || k} ${LVL[v] || v}`;
 };
+function fxChart(key, t) { CHART[key] = t; return key; }
 function liveHtml(L) {
   if (!L) return "";
   const pos = Object.entries(L.positions || {});
@@ -516,10 +630,10 @@ function liveHtml(L) {
   const when = (ms) => new Date(ms).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"});
   return `<div class="sub" style="margin-top:12px"><b>🟢 OANDA demo данс дээрх бодит арилжаа</b> · NAV ${fmt(L.nav)} · ${(L.trades || []).length} арилжаа ${fmt(sumR)}R</div>
     ${pos.length ? `<table><thead><tr><th>Нээлттэй</th><th>Орсон</th><th>Stop</th><th>Итгэл</th></tr></thead><tbody>` +
-      pos.map(([p, q]) => `<tr><td>${esc(coin(p))} ${SESS[q.session] || q.session} <span class="sub">${q.side}</span></td><td>${fmtp(q.entry)}</td><td>${fmtp(q.stop)}</td><td>${pct(q.p)}</td></tr>`).join("") + `</tbody></table>`
+      pos.map(([p, q], i) => `<tr class="click" data-chart="${fxChart("fp" + i, {symbol: p, side: q.side, entry: q.entry, stop: q.stop, entry_ts: q.entry_ts, title: "нээлттэй"})}"><td>${esc(coin(p))} ${SESS[q.session] || q.session} <span class="sub">${q.side}</span></td><td>${fmtp(q.entry)}</td><td>${fmtp(q.stop)}</td><td>${pct(q.p)}</td></tr>`).join("") + `</tbody></table>`
       : `<div class="empty">Одоо нээлттэй бодит арилжаа алга</div>`}
     ${tr.length ? `<table style="margin-top:6px"><thead><tr><th>Хаагдсан</th><th>Хос</th><th>R</th><th>Ашиг</th><th>Шалтгаан</th></tr></thead><tbody>` +
-      tr.map(t => `<tr><td>${when(t.exit_ts)}</td><td>${esc(coin(t.pair))} ${SESS[t.session] || t.session} <span class="sub">${t.side}</span></td>
+      tr.map((t, i) => `<tr class="click" data-chart="${fxChart("ft" + i, {symbol: t.pair, side: t.side, entry: t.entry, stop: t.stop, exit: t.exit, entry_ts: t.entry_ts, exit_ts: t.exit_ts, title: fmt(t.r) + "R"})}"><td>${when(t.exit_ts)}</td><td>${esc(coin(t.pair))} ${SESS[t.session] || t.session} <span class="sub">${t.side}</span></td>
         <td class="${cls(t.r)}">${fmt(t.r)}R</td><td class="${cls(t.pnl)}">${fmt(t.pnl)}</td><td>${esc(t.reason)}</td></tr>`).join("") + `</tbody></table>` : ""}`;
 }
 function aiHtml(b) {
@@ -660,6 +774,14 @@ async function load() {
     ["Stop", r => fmtp(r.stop)], ["TP", r => fmtp(r.tp)],
     ["Хагас авсан", r => r.partial_done ? "✓" : ""],
   ]);
+  if (window.CANDLES_URL) [...$("open").querySelectorAll("tbody tr")].forEach((tr, i) => {
+    const r = [...d.open_trades, ...pend][i];
+    if (!r) return;
+    CHART["op" + i] = {symbol: r.symbol, side: r.side, entry: r.entry, stop: r.stop, tp: r.tp, entry_ts: r.opened_ts,
+                       stop0: r.entry && r.dist ? r.entry - (r.side === "long" ? 1 : -1) * r.dist : null,
+                       title: r.pending ? "limit хүлээж буй" : "нээлттэй"};
+    tr.classList.add("click"); tr.dataset.chart = "op" + i;
+  });
   $("events").innerHTML = renderEvents(d);
 
   $("trades").innerHTML = renderTrades(d);

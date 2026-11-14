@@ -291,8 +291,10 @@ def market_page(name: str, request: Request):
     if name not in visible_markets(user) or who is None:
         return page("Хандах эрхгүй", "<h1>Хандах эрхгүй</h1>", user)
     api = f"/api/m/{name}/data?user={who}"
+    candles_api = f"/api/m/{name}/candles"
     inject = (f"{FONT_LINK}<style>{NAV_CSS}{THEME}</style>{nav(user, name)}"
-              f"<script>window.API_URL = {json.dumps(api)};</script>")
+              f"<script>window.API_URL = {json.dumps(api)}; window.CANDLES_URL = {json.dumps(candles_api)};"
+              f" window.MARKET_TF = {json.dumps('15m' if name == 'fx' else m_tf(name))};</script>")
     if who != user.name:
         inject += f'<div style="max-width:1200px;margin:8px auto;padding:0 16px" class="muted">👑 {esc(who)}-ийн данс</div>'
     text = MARKET_PAGE.read_text(encoding="utf-8")
@@ -315,6 +317,40 @@ def market_data(name: str, request: Request):
     with market(name):
         d = dashboard.data(who)
     return JSONResponse(json.loads(json.dumps(d, default=str)), headers={"Cache-Control": "no-store"})
+
+
+def m_tf(name: str) -> str:
+    try:
+        return markets.get(name).timeframe
+    except Exception:
+        return "4h"
+
+
+@app.get("/api/m/{name}/candles")
+def candles_api(name: str, request: Request, symbol: str, tf: str = "", until: int | None = None, limit: int = 300):
+    """Candles for the price chart (owner 2026-11-15): the newest `limit` up to `until` (ms)."""
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"error": "login"}, status_code=401)
+    if name not in visible_markets(user):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    limit = max(20, min(int(limit), 1000))
+    with market(name):
+        db = Storage().db
+        tfs = [r[0] for r in db.execute("SELECT DISTINCT tf FROM candles WHERE symbol = ?", (symbol,))]
+        order = {"15m": 0, "1h": 1, "4h": 2, "1d": 3}
+        tfs.sort(key=lambda x: order.get(x, 9))
+        tf = tf if tf in tfs else ("15m" if name == "fx" and "15m" in tfs else mkt().timeframe if mkt().timeframe in tfs
+                                   else (tfs[-1] if tfs else ""))
+        q = "SELECT ts, open, high, low, close FROM candles WHERE symbol = ? AND tf = ?"
+        args = [symbol, tf]
+        if until:
+            q += " AND ts <= ?"
+            args.append(int(until))
+        rows = db.execute(q + " ORDER BY ts DESC LIMIT ?", (*args, limit)).fetchall()
+        db.close()
+    rows = [[int(r[0]), r[1], r[2], r[3], r[4]] for r in reversed(rows)]
+    return JSONResponse({"symbol": symbol, "tf": tf, "tfs": tfs, "candles": rows}, headers={"Cache-Control": "no-store"})
 
 
 # ---------------- messages (replaced Telegram, owner 2026-11-15) ----------------
