@@ -258,18 +258,28 @@ def weekly_stats(st: Storage, mode: str, user: str | None = None) -> dict:
 
 
 def weekly_report(st: Storage, mode: str, user: str | None = None) -> str:
-    """English, for Telegram."""
     s = weekly_stats(st, mode, user)
+    bullets = weekly_bullets(s, mkt().name)
+    return weekly_head(s) + ("\n\n" + bullets if bullets else "")
+
+
+def weekly_head(s: dict) -> str:
+    """The numbers part of the weekly report (instant, no AI)."""
     head = (f"📅 7-DAY REPORT · {mkt().label}\n\n{s['trades']} trades, {s['wins']} wins, "
             f"{s['pnl']:+.2f} {mkt().currency}, average {s['avg_r']:+.2f}R, balance {s['equity_change']:+.2%}")
     if s["loss_reasons"]:
         head += "\n🧠 Repeated loss reasons: " + ", ".join(f"{k} ×{v}" for k, v in s["loss_reasons"].items())
+    return head
+
+
+def weekly_bullets(s: dict, market_name: str) -> str:
+    """The AI's lessons (slow: ~25 s on the server's CPU). Needs no active market."""
     if not ai.enabled() or s["trades"] == 0:
-        return head
+        return ""
     try:
-        ans = ai.ask_json(WEEK_SYSTEM.format(market=mkt().name), json.dumps(s, ensure_ascii=False), WEEK_SCHEMA)
+        ans = ai.ask_json(WEEK_SYSTEM.format(market=market_name), json.dumps(s, ensure_ascii=False), WEEK_SCHEMA)
         if ans and ans.get("bullets"):
-            return head + "\n\n" + "\n".join(f"• {b}" for b in ans["bullets"][:5])
+            return "\n".join(f"• {b}" for b in ans["bullets"][:5])
     except Exception as e:
         log.warning("Weekly report: %s", e)
-    return head
+    return ""

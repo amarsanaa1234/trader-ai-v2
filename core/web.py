@@ -376,6 +376,34 @@ def messages_page(request: Request):
 
 
 # ---------------- reports ----------------
+# The AI's weekly lessons take ~25 s per market on the server's CPU. They used to be written
+# on every page load (~75 s, and other pages waited on the market lock meanwhile), so now
+# they are made in the background and kept for WEEK_AI_TTL; the page shows what is ready.
+WEEK_AI_TTL = 6 * 3600
+_week_ai: dict = {}            # (market, user) -> {"ts": made, "text": bullets, "busy": bool}
+_week_ai_lock = threading.Lock()
+
+
+def _week_bullets(name: str, user: str, stats: dict) -> str:
+    c = None
+    with _week_ai_lock:
+        c = _week_ai.setdefault((name, user), {"ts": 0, "text": "", "busy": False})
+        if time.time() - c["ts"] > WEEK_AI_TTL and not c["busy"]:
+            c["busy"] = True
+
+            def work():
+                from . import review
+                text = review.weekly_bullets(stats, name)
+                with _week_ai_lock:
+                    c.update(ts=time.time(), text=text, busy=False)
+
+            threading.Thread(target=work, daemon=True).start()
+        text, busy = c["text"], c["busy"]
+    if text:
+        return "\n\n" + text
+    return "\n\n⏳ AI-ийн дүгнэлт бэлдэж байна (~1 минут), дараа нь хуудсаа шинэчилнэ үү." if busy else ""
+
+
 @app.get("/reports")
 def reports(request: Request):
     user = current_user(request)
@@ -384,9 +412,10 @@ def reports(request: Request):
     from . import review
     parts = []
     for name in visible_markets(user):
-        with market(name):
+        with market(name):   # only the quick numbers under the shared lock
             try:
-                text = review.weekly_report(Storage(), mkt().mode, user.name)
+                stats = review.weekly_stats(Storage(), mkt().mode, user.name)
+                text = review.weekly_head(stats) + _week_bullets(name, user.name, stats)
             except Exception as e:
                 text = f"–  ({e})"
             parts.append(f"<h2>{esc(mkt().label)}</h2><pre>{esc(text)}</pre>")
