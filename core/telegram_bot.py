@@ -34,7 +34,8 @@ ADMIN_HELP = """
 
 
 def enabled() -> bool:
-    return bool(TELEGRAM_BOT_TOKEN)
+    from .notifier import TELEGRAM_ON   # owner, 2026-11-15: Telegram off -> no command polling either
+    return TELEGRAM_ON and bool(TELEGRAM_BOT_TOKEN)
 
 
 # ---- one Telegram poller for all market processes ----

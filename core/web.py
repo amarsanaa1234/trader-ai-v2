@@ -182,7 +182,8 @@ def nav(user, active: str) -> str:
     items = [("home", "/", "🏠 Нүүр")]
     for name in visible_markets(user):
         items.append((name, f"/m/{name}", markets.get(name).label))
-    items += [("reports", "/reports", "📊 Тайлан"), ("settings", "/settings", "⚙️ Тохиргоо")]
+    items += [("messages", "/messages", "📨 Мэдэгдэл"), ("reports", "/reports", "📊 Тайлан"),
+              ("settings", "/settings", "⚙️ Тохиргоо")]
     if user.is_admin:
         items.append(("admin", "/admin", "👑 Админ"))
     links = "".join(f'<a class="item{" on" if k == active else ""}" href="{h}">{t}</a>' for k, h, t in items)
@@ -316,6 +317,64 @@ def market_data(name: str, request: Request):
     return JSONResponse(json.loads(json.dumps(d, default=str)), headers={"Cache-Control": "no-store"})
 
 
+# ---------------- messages (replaced Telegram, owner 2026-11-15) ----------------
+@app.get("/messages")
+def messages_page(request: Request):
+    user = current_user(request)
+    if not user:
+        return need_login()
+    from . import notifier
+    mine = set(visible_markets(user))
+    rows = [r for r in notifier.recent(user.name) if r["market"] in mine]
+    labels = {n: markets.get(n).label for n in mine}
+    chips = "".join(f'<button class="mchip" data-m="{esc(n)}">{esc(labels[n])} '
+                    f'<span class="muted">{sum(1 for r in rows if r["market"] == n)}</span></button>'
+                    for n in sorted(mine) if any(r["market"] == n for r in rows))
+    items = "".join(
+        f'<div class="msg" data-m="{esc(r["market"])}" data-ts="{r["ts"]}">'
+        f'<div class="mhead"><span>{esc(labels.get(r["market"], r["market"]))}</span><span class="mt"></span></div>'
+        f'<div class="mtext">{esc(r["text"])}</div></div>' for r in rows)
+    body = f"""<h1>📨 Мэдэгдэл</h1>
+<p class="muted">Ботын мэдэгдлүүд (арилжаа нээсэн/хаасан, stop шилжсэн, TP сунгасан, алдаа гэх мэт).
+Сүүлийн {notifier.KEEP_DAYS} хоногийнх хадгалагдана, түүнээс хуучин нь автоматаар устна.</p>
+<div class="mchips"><button class="mchip on" data-m="">Бүгд <span class="muted">{len(rows)}</span></button>{chips}</div>
+<div id="msgs">{items or '<p class="muted">Сүүлийн 7 хоногт мэдэгдэл алга.</p>'}</div>
+<style>
+.mchips{{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}}
+.mchip{{border:1px solid var(--line);background:var(--card);color:inherit;border-radius:999px;padding:5px 12px;cursor:pointer;font:inherit}}
+.mchip.on{{border-color:var(--accent);color:var(--accent)}}
+.mday{{margin:18px 0 6px;font-weight:600;color:var(--muted);font-size:.9em}}
+.msg{{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px;margin:6px 0}}
+.mhead{{display:flex;justify-content:space-between;gap:8px;font-size:.82em;color:var(--muted);margin-bottom:4px}}
+.mtext{{white-space:pre-wrap;word-break:break-word;font-size:.92em;line-height:1.45}}
+</style>
+<script>
+(function () {{
+  const box = document.getElementById("msgs"), msgs = [...box.querySelectorAll(".msg")];
+  let last = "";
+  for (const el of msgs) {{
+    const d = new Date(+el.dataset.ts);
+    el.querySelector(".mt").textContent = d.toLocaleTimeString([], {{hour: "2-digit", minute: "2-digit"}});
+    const day = d.toLocaleDateString([], {{weekday: "long", month: "numeric", day: "numeric"}});
+    if (day !== last) {{
+      const h = document.createElement("div"); h.className = "mday"; h.textContent = day; h.dataset.day = day;
+      el.before(h); last = day;
+    }}
+    el.dataset.day = day;
+  }}
+  document.querySelectorAll(".mchip").forEach(b => b.onclick = () => {{
+    document.querySelectorAll(".mchip").forEach(x => x.classList.toggle("on", x === b));
+    const m = b.dataset.m, shown = new Set();
+    for (const el of msgs) {{
+      const ok = !m || el.dataset.m === m; el.hidden = !ok; if (ok) shown.add(el.dataset.day);
+    }}
+    box.querySelectorAll(".mday").forEach(h => h.hidden = !shown.has(h.dataset.day));
+  }});
+}})();
+</script>"""
+    return page("Мэдэгдэл", body, user, "messages")
+
+
 # ---------------- reports ----------------
 @app.get("/reports")
 def reports(request: Request):
@@ -389,11 +448,11 @@ def settings_page(request: Request, msg: str = ""):
             "bad": '<div class="note">Одоогийн нууц үг буруу байна.</div>',
             "mismatch": '<div class="note">Шинэ нууц үгүүд таарахгүй байна.</div>',
             "short": f'<div class="note">Шинэ нууц үг хамгийн багадаа {auth.MIN_PASSWORD} тэмдэгт байх ёстой.</div>'}.get(msg, "")
-    tg = "✅ холбогдсон" if user.telegram_chat_id else "❌ холбогдоогүй (админд chat ID-гаа өгнө үү)"
+    tg = "унтраасан (мэдэгдэл вэб дээр: 📨 Мэдэгдэл, сүүлийн 7 хоног)"
     return page("Тохиргоо", f"""<h1>⚙️ Тохиргоо</h1>{note}
 <div class="card"><b>Telegram:</b> {tg}<br><b>Зах зээл:</b> {esc(', '.join(user.markets) or '–')}
 <br><b>Нэг арилжааны эрсдэл:</b> {f'{user.risk_per_trade:.2%}' if user.risk_per_trade else '0.5% (стандарт, зах зээл бүрийн дээд хязгаар)'}
-<p class="muted">Арилжааг зогсоох/эхлүүлэх нь Telegram-аар: /stop, /resume, /closeall</p></div>
+<p class="muted">Арилжааг зогсоох/эхлүүлэх Telegram командууд (/stop, /resume, /closeall) Telegram-тай хамт унтарсан.</p></div>
 <h2>Нууц үг солих</h2>
 <form class="box card" method="post" action="/settings/password">
 <label>Одоогийн нууц үг</label><input name="current" type="password" autocomplete="current-password" required>

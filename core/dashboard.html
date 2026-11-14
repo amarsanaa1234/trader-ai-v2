@@ -111,7 +111,8 @@
   </div>
 
   <div class="card row" id="tfc-card" hidden><div>
-    <div class="head"><h2>🧠 2 дахь тархи: 1 цагийн лаа (зөвхөн харьцуулалт)</h2><button class="q" data-help="h-tfc" aria-label="Тайлбар">?</button></div>
+    <div class="head"><h2>🧠 2 дахь тархи: 1 цагийн лаа (зөвхөн харьцуулалт)</h2><button class="q" data-help="h-tfc" aria-label="Тайлбар">?</button>
+      <div class="pager" id="tfc-pager"></div></div>
     <div id="tfc-kpi" class="grid" style="margin:6px 0 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))"></div>
     <div class="chart-box" style="height:200px"><canvas id="tfc-chart"></canvas></div>
     <div class="scroll" id="tfc-open" style="margin-top:10px"></div>
@@ -432,8 +433,14 @@ function renderTrades(d) {
 
 // ---- brain 2 (strategy 2 shadow) ----
 // ---- brain 2: the live settings on 1h candles (comparison only) ----
-let tfcChart;
+let tfcChart, tfcPage = 0, tfcData = null;
+const TFC_PAGE = 6;
+function pageTfc(delta) {
+  tfcPage += delta;
+  if (tfcData) renderTfCompare(tfcData);
+}
 function renderTfCompare(d) {
+  tfcData = d;
   const c = d.tf_compare;
   $("tfc-card").hidden = !c;
   if (!c) return;
@@ -450,7 +457,15 @@ function renderTfCompare(d) {
     op.map(q => `<tr><td>${esc(coin(q.symbol))} <span class="sub">${q.side}</span></td><td>${fmtp(q.entry)}</td>
       <td>${fmtp(q.stop)}</td><td>${fmtp(q.tp)}</td><td class="${cls(q.r_now)}">${fmt(q.r_now)}R</td></tr>`).join("") + `</tbody></table>`
     : `<div class="empty">1 цагийн тархид одоо нээлттэй арилжаа алга</div>`;
-  const rows = (c.small?.trades || []).slice(-15).reverse();
+  // 6 per page, newest first; ‹ › flip to older ones (the page stays put across the refresh)
+  const all = (c.small?.trades || []).slice().reverse();
+  const pages = Math.max(1, Math.ceil(all.length / TFC_PAGE));
+  tfcPage = Math.min(Math.max(tfcPage, 0), pages - 1);
+  $("tfc-pager").innerHTML = all.length > TFC_PAGE ? `
+    <button class="q" onclick="pageTfc(-1)" ${tfcPage === 0 ? "disabled" : ""} aria-label="Шинэ">‹</button>
+    <span class="sub">${tfcPage * TFC_PAGE + 1}–${Math.min((tfcPage + 1) * TFC_PAGE, all.length)} / ${all.length}</span>
+    <button class="q" onclick="pageTfc(1)" ${tfcPage >= pages - 1 ? "disabled" : ""} aria-label="Хуучин">›</button>` : "";
+  const rows = all.slice(tfcPage * TFC_PAGE, (tfcPage + 1) * TFC_PAGE);
   $("tfc-trades").innerHTML = rows.length ? `<table><thead><tr><th>Хаагдсан</th><th>Хэрэглүүр</th><th>R</th><th>Шалтгаан</th></tr></thead><tbody>` +
     rows.map(t => `<tr><td>${new Date(t.ts).toLocaleString([], {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}</td>
       <td>${esc(coin(t.symbol))} <span class="sub">${t.side}</span></td><td class="${cls(t.r)}">${fmt(t.r)}R</td>
