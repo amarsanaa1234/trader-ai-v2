@@ -210,18 +210,21 @@ class Trader:
                 self.finish_trade(t, None)
                 continue
             side = SIDE_NUM[t["side"]]
-            if not t["partial_done"] and positions[sym]["qty"] < t["qty"] * 0.75:
+            try:
+                px = self.broker.price(sym)
+            except Exception as e:
+                px = None
+                log.debug("%s price: %s", sym, e)
+            # Past the stop = the exchange stop fired (Binance demo sometimes fills only part of
+            # it, 2026-11-14 SOL/BNB). That is a stop, not "half profit taken" or "no stop".
+            past_stop = px is not None and side * (px - t["stop"]) <= 0
+            if not t["partial_done"] and positions[sym]["qty"] < t["qty"] * 0.75 and not past_stop:
                 self.st.update_trade(t["id"], partial_done=1)
                 notify(M.partial_taken(sym, side), to=self.to())
             # The take-profit is a resting limit order, but Binance demo sometimes rejects it
             # (-2022) and BNB/BTC/SOL then ran past their TP for days (2026-11-09). So the bot
             # also watches the price itself and closes once the TP is reached.
             if t["tp"] and self.m.is_open():
-                try:
-                    px = self.broker.price(sym)
-                except Exception as e:
-                    px = None
-                    log.debug("%s price: %s", sym, e)
                 if px is not None and side * (px - t["tp"]) >= 0:
                     log.warning("%s/%s TP %s хүрсэн (одоо %s) ч биржид хаагдаагүй -> хааж байна",
                                 self.acc.name, sym, t["tp"], px)
@@ -230,6 +233,12 @@ class Trader:
                     continue
             if not self.broker.has_stop(sym):
                 # Rule: every position must have a stop on the exchange.
+                if past_stop:   # a new stop here would trigger at once (-2021): close what is left
+                    log.warning("%s/%s stop %s давсан (одоо %s), биржийн stop алга -> хааж байна",
+                                self.acc.name, sym, t["stop"], px)
+                    if self.close_trade(t, "stop"):
+                        positions.pop(sym, None)
+                    continue
                 try:
                     self.broker.place_stop(sym, side, positions[sym]["qty"], t["stop"])
                     notify(f"⚠️ {sym}: the stop-loss was missing, placed it again", key=f"stop{sym}", every_sec=600,
