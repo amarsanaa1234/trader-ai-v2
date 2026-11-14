@@ -337,20 +337,51 @@ def candles_api(name: str, request: Request, symbol: str, tf: str = "", until: i
     limit = max(20, min(int(limit), 1000))
     with market(name):
         db = Storage().db
-        tfs = [r[0] for r in db.execute("SELECT DISTINCT tf FROM candles WHERE symbol = ?", (symbol,))]
-        order = {"15m": 0, "1h": 1, "4h": 2, "1d": 3}
-        tfs.sort(key=lambda x: order.get(x, 9))
-        tf = tf if tf in tfs else ("15m" if name == "fx" and "15m" in tfs else mkt().timeframe if mkt().timeframe in tfs
-                                   else (tfs[-1] if tfs else ""))
-        q = "SELECT ts, open, high, low, close FROM candles WHERE symbol = ? AND tf = ?"
-        args = [symbol, tf]
-        if until:
-            q += " AND ts <= ?"
-            args.append(int(until))
-        rows = db.execute(q + " ORDER BY ts DESC LIMIT ?", (*args, limit)).fetchall()
-        db.close()
+        try:
+            # Only timeframes that are still kept up to date: crypto 15m stopped 2026-10-11 and FX
+            # 1h/4h on 2026-11-11 (nobody syncs them any more). A stale one is rebuilt from a fresh
+            # finer one (FX 1h/4h from 15m) or left out.
+            last = {r[0]: int(r[1]) for r in db.execute(
+                "SELECT tf, MAX(ts) FROM candles WHERE symbol = ? GROUP BY tf", (symbol,)) if r[0] in TF_MS}
+            newest = max(last.values(), default=0)
+            fresh = sorted((t for t, ts in last.items() if ts >= newest - 2 * 86_400_000), key=TF_MS.get)
+            source = {t: t for t in fresh}
+            for t in TF_MS:
+                if t not in source and fresh and TF_MS[fresh[0]] < TF_MS[t]:
+                    source[t] = fresh[0]
+            tfs = sorted(source, key=TF_MS.get)
+            pref = "15m" if name == "fx" else mkt().timeframe
+            tf = tf if tf in source else pref if pref in source else (tfs[-1] if tfs else "")
+            rows = []
+            if tf:
+                base, k = source[tf], TF_MS[tf] // TF_MS[source[tf]]
+                q, args = "SELECT ts, open, high, low, close FROM candles WHERE symbol = ? AND tf = ?", [symbol, base]
+                if until:
+                    q += " AND ts <= ?"
+                    args.append(int(until))
+                rows = db.execute(q + " ORDER BY ts DESC LIMIT ?", (*args, limit * k)).fetchall()
+        finally:
+            db.close()
     rows = [[int(r[0]), r[1], r[2], r[3], r[4]] for r in reversed(rows)]
+    if tf and source[tf] != tf:
+        rows = _resample(rows, TF_MS[tf])[-limit:]
     return JSONResponse({"symbol": symbol, "tf": tf, "tfs": tfs, "candles": rows}, headers={"Cache-Control": "no-store"})
+
+
+TF_MS = {"15m": 900_000, "1h": 3_600_000, "4h": 14_400_000}
+
+
+def _resample(rows: list, ms: int) -> list:
+    """Finer candles -> bigger ones on the UTC grid (ts, open, high, low, close)."""
+    out = []
+    for ts, o, h, l, c in rows:
+        b = ts // ms * ms
+        if out and out[-1][0] == b:
+            x = out[-1]
+            x[2], x[3], x[4] = max(x[2], h), min(x[3], l), c
+        else:
+            out.append([b, o, h, l, c])
+    return out
 
 
 # ---------------- messages (replaced Telegram, owner 2026-11-15) ----------------
