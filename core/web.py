@@ -288,7 +288,8 @@ def home(request: Request):
             state = "⏸ зогссон" if s["paused"] else ("🛑 kill switch" if s["halted"] else "▶️ ажиллаж байна")
             body = (f'<div class="big">{money(s["equity"])}</div><div>Өнөөдөр {pct(s["today"])}</div>'
                     f'<div class="muted">{s["open"]} position · {s["pending"]} захиалга · {state}</div>'
-                    f'<div class="muted">допамин {s["dopamine"]:+.2f} {esc(s["mood"])}</div>')
+                    + (f'<div class="muted">допамин {s["dopamine"]:+.2f} {esc(s["mood"])}</div>'
+                       if s.get("dopamine") is not None else ""))
         cards.append(f'<a class="card" href="/m/{name}"><div class="muted">{esc(s["label"])} · {esc(s["mode"])}</div>{body}</a>')
     if not cards:
         cards.append('<div class="card muted">Танд нээлттэй зах зээл алга. Админд хандана уу.</div>')

@@ -124,7 +124,23 @@ def summary(user: str) -> dict:
             "today": (a["equity"] / start - 1) if a["equity"] and start else None,
             "open": len(st.open_trades(m.mode, user)), "pending": len(a["pending"]), "paused": a["paused"],
             "halted": bool(day.get("halted")), "dopamine": a["dop"], "mood": reward.mood(a["dop"]),
-            "heartbeat": st.get("heartbeat")}
+            "heartbeat": st.get("heartbeat"), **_fx15_card(st, m)}
+
+
+def _fx15_card(st: Storage, m) -> dict:
+    """FX's only bot is the 15m learner (core/fx15_live.py, since 2026-11-12): its own NAV,
+    positions and loss limits, not the retired 4h bot's day state (which said "kill switch"
+    forever after its last day, 2026-11-11)."""
+    live = st.get("fx15_live") if m.name == "fx" else None
+    if not live or live.get("nav") is None:
+        return {}
+    from . import orb15
+    nav, today = live["nav"], int(time.time() * 1000) // 86_400_000
+    start = live.get("day_start") if live.get("day") == today else None
+    peak = live.get("peak") or nav
+    halted = bool((start and nav / start - 1 <= -orb15.DAILY_LOSS) or nav / peak - 1 <= -orb15.MAX_DD)
+    return {"equity": nav, "today": (nav / start - 1) if start else 0.0, "open": len(live.get("positions") or {}),
+            "pending": 0, "paused": False, "halted": halted, "dopamine": None, "mood": ""}
 
 
 def public(user: str) -> dict:
