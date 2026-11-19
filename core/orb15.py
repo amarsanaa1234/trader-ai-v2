@@ -83,6 +83,15 @@ def signals(df: pd.DataFrame) -> dict:
     return {"dir": d, "sl": a * P["k"], "x": flat}
 
 
+# Fixed TP-extension rule for FX (owner, 2026-11-19; same idea as core/exits.tp_extension):
+# a take-profit at TP_R; when a candle comes within 0.1R of it and the 1h trend (the entry
+# filter) still agrees, the stop goes to TP - 0.15R, the TP 1R further, and the time limits
+# start again (64 candles; the session-end close no longer applies to that trade, Friday
+# close still does). None = no take-profit, as researched.
+TP_EXT = None          # e.g. {"tp_r": 2.0, "reset_flat": True}
+NEAR_R, LOCK_R, STEP_R = 0.1, 0.15, 1.0
+
+
 def simulate(df: pd.DataFrame, sig: dict, spread_rel: float):
     """fx15/engine.simulate: entry at the next open, stop checked inside each later candle
     (gaps fill at the open), exit at the 16:00 / 64-candle / Friday close. Returns the closed
@@ -94,6 +103,8 @@ def simulate(df: pd.DataFrame, sig: dict, spread_rel: float):
     no_entry = np.isin(uh, (21, 22, 23)) | ((dow == 4) & (uh >= 19)) | (dow >= 5)
     force_flat = (dow == 4) & (uh >= 20)
     d_arr, sl, x = sig["dir"], sig["sl"], sig["x"]
+    if TP_EXT:
+        hf, hs, hcl = (df[k].to_numpy(float) for k in ("h1_f", "h1_s", "h1_c"))
     n, i, trades, open_pos = len(c), 0, [], None
     while i < n - 2:
         d = int(d_arr[i])
@@ -103,6 +114,8 @@ def simulate(df: pd.DataFrame, sig: dict, spread_rel: float):
         e, s = o[i + 1], sl[i]
         cost, stop = spread[i + 1] * e, e - d * s
         j, exit_px, stopped = i + 1, None, False
+        tp = e + d * TP_EXT["tp_r"] * s if TP_EXT else None
+        hold_from, no_flat, n_ext = i, False, 0
         while j < n:
             if j > i + 1 and ((d == 1 and o[j] <= stop) or (d == -1 and o[j] >= stop)):
                 exit_px, stopped = o[j], True
@@ -110,7 +123,23 @@ def simulate(df: pd.DataFrame, sig: dict, spread_rel: float):
             if (d == 1 and l[j] <= stop) or (d == -1 and h[j] >= stop):
                 exit_px, stopped = stop, True
                 break
-            if x[j] or force_flat[j] or j - i >= P["hold"]:
+            if tp is not None:
+                best = h[j] if d == 1 else l[j]
+                if d * (best - tp) >= -NEAR_R * s:
+                    agree = (hf[j - 1] > hs[j - 1] and hcl[j - 1] > hf[j - 1]) if d == 1 else                             (hf[j - 1] < hs[j - 1] and hcl[j - 1] < hf[j - 1])
+                    if agree:
+                        lock = tp - d * LOCK_R * s
+                        stop = max(stop, lock) if d == 1 else min(stop, lock)
+                        tp += d * STEP_R * s
+                        hold_from, n_ext = j, n_ext + 1
+                        no_flat = no_flat or TP_EXT.get("reset_flat", False)
+                        if d * (c[j] - stop) <= 0:          # candle closed back past the new stop
+                            exit_px, stopped = stop, True
+                            break
+                    elif d * (best - tp) >= 0:
+                        exit_px = tp
+                        break
+            if (x[j] and not no_flat) or force_flat[j] or j - hold_from >= P["hold"]:
                 exit_px = c[j]
                 break
             j += 1

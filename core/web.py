@@ -102,13 +102,18 @@ pre { padding:10px; overflow-x:auto; }
 FONT_LINK = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
              '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">')
 THEME = """
-:root { --bg:#f4f6fb; --card:#ffffff; --card2:#f8fafd; --text:#111827; --muted:#6b7488; --line:#e7ebf3;
-        --accent:#5b5bd6; --accent2:#0ea5a4; --accent-soft:#ecebff; --up:#0f9f6e; --down:#e5484d;
-        --warn-bg:#fff6e0; --warn:#9a6700; --shadow:0 1px 2px rgba(17,24,39,.04),0 6px 24px rgba(17,24,39,.05); }
-@media (prefers-color-scheme: dark) {
-  :root { --bg:#0d1117; --card:#141a23; --card2:#18202b; --text:#e6e9ef; --muted:#8b94a7; --line:#232c39;
-          --accent:#8b8cff; --accent2:#2ec4b6; --accent-soft:rgba(139,140,255,.14); --up:#3ecf8e; --down:#ff6b81;
-          --warn-bg:rgba(251,191,36,.12); --warn:#fbbf24; --shadow:none; } }
+/* owner 2026-11-19: light = warm sand palette (#FFEDDB #EDCDBB #E3B7A0 #BF9270),
+   dark = slate blue palette (#27374D #526D82 #9DB2BF #DDE6ED); toggle in the menu bar */
+:root { --bg:#FFEDDB; --card:#FFF8F1; --card2:#FBE4D2; --text:#3A2A1F; --muted:#8A6A55; --line:#EDCDBB; --accent:#9E7150; --accent2:#BF9270; --accent3:#E3B7A0; --accent-soft:rgba(191,146,112,.18); --btn-a:#BF9270; --btn-b:#9E7150; --btn-text:#ffffff; --up:#2F7D4F; --down:#C0392B; --warn-bg:#FBE4D2; --warn:#8A4B1F; --shadow:0 1px 2px rgba(120,80,50,.06),0 6px 24px rgba(120,80,50,.08); color-scheme:light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#1E2B3C; --card:#27374D; --card2:#2F425B; --text:#DDE6ED; --muted:#9DB2BF; --line:#3A5068; --accent:#9DB2BF; --accent2:#526D82; --accent3:#DDE6ED; --accent-soft:rgba(157,178,191,.16); --btn-a:#9DB2BF; --btn-b:#6F8CA1; --btn-text:#16212F; --up:#5FD3A0; --down:#FF8A8A; --warn-bg:rgba(251,191,36,.12); --warn:#F5C26B; --shadow:none; color-scheme:dark; } }
+:root[data-theme="light"] { --bg:#FFEDDB; --card:#FFF8F1; --card2:#FBE4D2; --text:#3A2A1F; --muted:#8A6A55; --line:#EDCDBB; --accent:#9E7150; --accent2:#BF9270; --accent3:#E3B7A0; --accent-soft:rgba(191,146,112,.18); --btn-a:#BF9270; --btn-b:#9E7150; --btn-text:#ffffff; --up:#2F7D4F; --down:#C0392B; --warn-bg:#FBE4D2; --warn:#8A4B1F; --shadow:0 1px 2px rgba(120,80,50,.06),0 6px 24px rgba(120,80,50,.08); color-scheme:light; }
+:root[data-theme="dark"] { --bg:#1E2B3C; --card:#27374D; --card2:#2F425B; --text:#DDE6ED; --muted:#9DB2BF; --line:#3A5068; --accent:#9DB2BF; --accent2:#526D82; --accent3:#DDE6ED; --accent-soft:rgba(157,178,191,.16); --btn-a:#9DB2BF; --btn-b:#6F8CA1; --btn-text:#16212F; --up:#5FD3A0; --down:#FF8A8A; --warn-bg:rgba(251,191,36,.12); --warn:#F5C26B; --shadow:none; color-scheme:dark; }
+.tai-theme { margin-left:8px; border:1px solid var(--line) !important; background:var(--card2) !important;
+             color:var(--text) !important; border-radius:999px !important; padding:4px 10px !important; margin-top:0 !important;
+             font-size:13px !important; cursor:pointer; line-height:1.2; flex:none; }
+.tai-theme:hover { border-color:var(--accent) !important; }
+:root[data-theme="dark"] .tt-d, :root:not([data-theme="dark"]) .tt-l { display:none; }
+@media (max-width:640px) { .tai-theme { position:sticky; right:0; box-shadow:-8px 0 12px var(--card); } }
 [hidden] { display:none !important; }   /* "hidden" must win over .grid / .row display rules */
 html { -webkit-font-smoothing:antialiased; }
 body { background:var(--bg) !important; color:var(--text);
@@ -149,7 +154,7 @@ tbody tr:hover td { background:var(--accent-soft); }
 input { border-radius:10px !important; border:1px solid var(--line) !important; background:var(--card2) !important; }
 input:focus { outline:none; border-color:var(--accent) !important; box-shadow:0 0 0 3px var(--accent-soft); }
 button:not(.q):not(.x) { border-radius:10px !important; font-weight:600;
-         background:linear-gradient(135deg,var(--accent),#7c5cff) !important; color:#fff !important; }
+         background:linear-gradient(135deg,var(--btn-a),var(--btn-b)) !important; color:var(--btn-text) !important; }
 a { color:var(--accent); }
 a.btn { border-radius:10px !important; border-color:var(--line) !important; background:var(--card2); }
 .tai-nav { background:color-mix(in srgb, var(--card) 82%, transparent) !important; backdrop-filter:saturate(1.4) blur(12px);
@@ -174,6 +179,14 @@ a.btn { border-radius:10px !important; border-color:var(--line) !important; back
 """
 
 
+# Picks the saved theme (or the device's) before the page paints; the menu button flips it.
+THEME_JS = """<script>(function(){var t;try{t=localStorage.getItem("tai-theme")}catch(e){}
+if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}
+document.documentElement.setAttribute("data-theme",t)})();
+function taiTheme(){var n=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";
+try{localStorage.setItem("tai-theme",n)}catch(e){}location.reload()}</script>"""
+
+
 def esc(x) -> str:
     return html.escape(str(x if x is not None else ""))
 
@@ -189,6 +202,8 @@ def nav(user, active: str) -> str:
     links = "".join(f'<a class="item{" on" if k == active else ""}" href="{h}">{t}</a>' for k, h, t in items)
     return (f'<nav class="tai-nav"><div class="in"><a class="brand" href="/">🤖 Trader AI</a>{links}'
             f'<span class="who">👤 {esc(user.name)}{" 👑" if user.is_admin else ""} · <a href="/logout">гарах</a></span>'
+            f'<button class="x tai-theme" type="button" onclick="taiTheme()" title="Өнгө солих" aria-label="Өнгө солих">'
+            f'<span class="tt-d">🌙</span><span class="tt-l">☀️</span></button>'
             f"</div></nav>")
 
 
@@ -196,7 +211,7 @@ def page(title: str, body: str, user=None, active: str = "") -> HTMLResponse:
     top = nav(user, active) if user else ""
     return HTMLResponse(f"""<!doctype html><html lang="mn"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(title)} · Trader AI</title>
-{FONT_LINK}<style>{CSS}{THEME}</style></head><body>{top}<main class="page">{body}</main></body></html>""",
+{THEME_JS}{FONT_LINK}<style>{CSS}{THEME}</style></head><body>{top}<main class="page">{body}</main></body></html>""",
                         headers={"Cache-Control": "no-store"})
 
 
@@ -298,6 +313,7 @@ def market_page(name: str, request: Request):
     if who != user.name:
         inject += f'<div style="max-width:1200px;margin:8px auto;padding:0 16px" class="muted">👑 {esc(who)}-ийн данс</div>'
     text = MARKET_PAGE.read_text(encoding="utf-8")
+    text = text.replace("</head>", THEME_JS + "</head>", 1)
     text = text.replace("<body>", "<body>" + inject, 1).replace('fetch("/api/data")', "fetch(window.API_URL)")
     m = markets.get(name)
     text = text.replace("<title>Crypto AI Dashboard</title>", f"<title>{esc(m.label)} · Trader AI</title>")
