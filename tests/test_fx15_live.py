@@ -103,3 +103,20 @@ def test_exit_rules():
     assert fx15_live.exit_due(d, at("2026-11-12 15:00", "Asia/Tokyo")) == "session end"
     fri = {"session": "ny", "entry_ts": at("2026-11-13 10:00", "America/New_York")}
     assert fx15_live.exit_due(fri, at("2026-11-13 20:00", "UTC")) == "Friday close"
+
+
+def test_open_bar_padding_lets_a_breakout_on_the_last_closed_candle_start_now():
+    """2026-11-19: simulate() enters at the next open and stops two candles before the end,
+    so decide() never saw the trade starting now. with_open_bar() pads two flat candles."""
+    import pandas as pd
+    from core import fx15_live, orb15
+    df = pd.DataFrame({"ts": [0, 900_000, 1_800_000], "open": 1.0, "high": 1.0, "low": 1.0, "close": [1.0, 1.0, 1.2]})
+    out = fx15_live.with_open_bar(df, 2_700_000)
+    assert list(out.ts) == [0, 900_000, 1_800_000, 2_700_000, 3_600_000]
+    assert (out.iloc[3:][["open", "high", "low", "close"]] == 1.2).all().all()
+    # a signal on the last closed candle (index 2) now opens at the padded candle
+    sig = {"dir": [0, 0, 1, 0, 0], "sl": [0.01] * 5, "x": [False] * 5}
+    import numpy as np
+    feats = out.assign(utc_h=10, dow=1)
+    trades, op = orb15.simulate(feats, {k: np.array(v) for k, v in sig.items()}, 0.0)
+    assert not trades and op and op["opened"] == 2_700_000

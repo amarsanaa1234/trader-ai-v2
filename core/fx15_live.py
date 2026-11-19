@@ -52,6 +52,20 @@ def exit_due(pos: dict, now: int) -> str | None:
     return None
 
 
+def with_open_bar(df: pd.DataFrame, bar_open: int) -> pd.DataFrame:
+    """Closed candles + two flat placeholder candles (the one opening now and the next).
+    orb15.simulate enters at the NEXT candle's open and stops scanning two candles before
+    the end, so without them a breakout on the candle that just closed never shows up as
+    the open trade starting now - the live bot could never enter (found 2026-11-19).
+    Every feature is causal (ATR, closed 1h candles, the day's range before the entry
+    window), so flat placeholders do not change the signal of the closed candles."""
+    if df.empty:
+        return df
+    last = float(df.close.iloc[-1])
+    pad = pd.DataFrame({"ts": [bar_open, bar_open + BAR], "open": last, "high": last, "low": last, "close": last})
+    return pd.concat([df, pad], ignore_index=True)
+
+
 def decide(st, now: int) -> list[dict]:
     """The learner's trades that start at the candle opening now (weight > 0)."""
     import json
@@ -65,6 +79,7 @@ def decide(st, now: int) -> list[dict]:
         df = df[df.ts < bar_open]                       # closed candles only
         if len(df) < 96 * 25:
             continue
+        df = with_open_bar(df, bar_open)
         cands += [t for s in orb_learn.SESSIONS for t in orb_learn.candidates(df, pair, s, include_open=True)
                   if t["entry_ts"] > snap_end]
     book = orb_learn.replay(cands, snap_end, known, learn_ai.Context.load(st))["book"]
