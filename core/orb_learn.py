@@ -168,6 +168,11 @@ def _post(rs, ages_days):
     return mean, 0.5 * (1 + math.erf(mean / (SD_R / math.sqrt(n)) / math.sqrt(2)))
 
 
+# Default states are not situations: "risk=normal" is how almost every trade is rated, so a
+# bad week of it would block nearly everything (owner, 2026-11-19).
+NEVER_LESSON = {"risk=normal"}
+
+
 def lessons(closed: list[dict]) -> dict:
     """Situations that clearly lose across all arms: {tag: (n, avg R)}."""
     if len(closed) < MIN_LESSON:
@@ -179,6 +184,8 @@ def lessons(closed: list[dict]) -> dict:
         for tag in bucket(t):
             by.setdefault(tag, []).append(t["r"])
     for tag, rs in by.items():
+        if tag in NEVER_LESSON:
+            continue
         rs = np.asarray(rs)
         if len(rs) < MIN_LESSON:
             continue

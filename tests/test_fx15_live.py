@@ -120,3 +120,13 @@ def test_open_bar_padding_lets_a_breakout_on_the_last_closed_candle_start_now():
     feats = out.assign(utc_h=10, dow=1)
     trades, op = orb15.simulate(feats, {k: np.array(v) for k, v in sig.items()}, 0.0)
     assert not trades and op and op["opened"] == 2_700_000
+
+
+def test_risk_normal_is_never_a_lesson():
+    from core import orb_learn
+    bad = [{"r": -1.0, "dow": 1, "width": 1.0, "trend": 1.0, "vol": 1.0, "risk": "normal"} for _ in range(80)]
+    good = [{"r": 1.0, "dow": 2, "width": 1.0, "trend": 1.0, "vol": 1.0} for _ in range(80)]
+    for t in bad + good:
+        t.update({k: v for k, v in zip(orb_learn.BUCKETS, [1.0] * len(orb_learn.BUCKETS))})
+    rules = orb_learn.lessons(bad + good)
+    assert "risk=normal" not in rules
