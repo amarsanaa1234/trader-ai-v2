@@ -23,10 +23,12 @@ def test_rule_numbers():
 def fake(price, score, tp_extend=True):
     t = {"id": 1, "symbol": "SOL/USDT:USDT", "side": "short", "qty": 2.0, "partial_done": 1, "entry": 100.0,
          "stop": 101.0, "tp": 72.6, "dist": 10.0, "risk_usd": 20.0}
-    calls, updates = [], []
+    calls, updates, saved = [], [], {}
     me = SimpleNamespace(
         m=SimpleNamespace(cfg={"tp_extend": tp_extend}),
-        st=SimpleNamespace(get=lambda k: score, update_trade=lambda i, **k: updates.append(k)),
+        st=SimpleNamespace(get=lambda k: score, update_trade=lambda i, **k: updates.append(k),
+                           set=lambda k, v: saved.__setitem__(k, v)),
+        tf_ms=14_400_000, saved=saved,
         broker=SimpleNamespace(move_stop=lambda *a: calls.append(("stop",) + a),
                                move_tp=lambda *a: calls.append(("tp",) + a)),
         params={"entry_threshold": 1.5}, acc=SimpleNamespace(name="amar"), to=lambda: None)
@@ -38,6 +40,7 @@ def test_live_extends(monkeypatch):
     me, t, calls, updates = fake(73.4, -1.2)
     assert Trader.extend_tp(me, t, -1, 73.4, {"SOL/USDT:USDT": {"qty": 1.0}})
     assert [c[0] for c in calls] == ["stop", "tp"] and round(calls[0][4], 6) == 74.1 and round(calls[1][4], 6) == 62.6
+    assert me.saved["hold_from:1"] % 14_400_000 == 0          # max-hold clock restarted (owner, 2026-11-19)
     assert round(updates[0]["tp"], 6) == 62.6 and round(updates[0]["stop"], 6) == 74.1
 
 
@@ -53,3 +56,21 @@ def test_only_crypto_and_commodities():
     import markets
     assert markets.get("crypto").cfg.get("tp_extend") and markets.get("commodities").cfg.get("tp_extend")
     assert not markets.get("fx").cfg.get("tp_extend")
+
+
+def test_hold_clock_restarts_after_extension():
+    """manage_open counts max_hold from hold_from:<id> once the TP was extended."""
+    from core import trader as tm
+    tf = 14_400_000
+    t = {"id": 7, "symbol": "XRP/USDT:USDT", "side": "short", "opened_bar_ts": 0}
+    store = {"hold_from:7": 100 * tf}
+    closed = []
+    me = SimpleNamespace(tf_ms=tf, params={"max_hold_bars": 105}, st=SimpleNamespace(get=store.get),
+                         m=SimpleNamespace(force_exit=lambda ts, p: [False]),
+                         close_trade=lambda *a, **k: closed.append(a))
+    sig = {"bar_ts": 150 * tf, "signal": 0}      # 150 bars since entry, only 50 since the extension
+    try:
+        tm.Trader.manage_open(me, t, sig, {})
+    except Exception:
+        pass                                     # later stop-tightening steps need more fakes
+    assert not closed

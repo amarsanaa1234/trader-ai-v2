@@ -164,13 +164,14 @@ def run(df: pd.DataFrame, params: dict, start: int = 0, end: int | None = None,
                                          score[i - 1], params["entry_threshold"]) if tp_ext else None
                 if ext:   # fixed rule (exits.tp_extension): stop near the TP, TP pushed out
                     pos["tp"], pos["stop"] = ext
+                    pos["hold"] = i    # owner 2026-11-19: the max-hold clock starts again
                     if c[i] <= pos["stop"] if side == 1 else c[i] >= pos["stop"]:   # candle closed back past it
                         close_part(pos["qty"], pos["stop"] * (1 - SLIPPAGE * side), TAKER_FEE, "stop_after_partial")
                         pos = None
                 elif h[i] >= pos["tp"] if side == 1 else l[i] <= pos["tp"]:
                     close_part(pos["qty"], pos["tp"], MAKER_FEE, "tp")
                     pos = None
-                elif i - pos["bar"] >= max_hold:
+                elif i - pos.get("hold", pos["bar"]) >= max_hold:
                     close_part(pos["qty"], c[i] * (1 - SLIPPAGE * side), TAKER_FEE, "time")
                     pos = None
                 elif sig[i] == -side:

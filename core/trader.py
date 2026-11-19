@@ -220,6 +220,8 @@ class Trader:
             log.warning("%s/%s TP сунгахад stop шилжүүлж чадсангүй: %s", self.acc.name, sym, e)
             return False      # leave the trade as it was; the TP check below still applies
         self.st.update_trade(t["id"], stop=new_stop, tp=new_tp)
+        # owner 2026-11-19: an extension starts the max-hold clock again (from the candle open now)
+        self.st.set(f"hold_from:{t['id']}", now_ms() // self.tf_ms * self.tf_ms)
         try:
             self.broker.move_tp(sym, side, qty, new_tp)
         except Exception as e:   # the bot watches the TP itself anyway (reconcile)
@@ -492,7 +494,7 @@ class Trader:
     def manage_open(self, t: dict, sig: dict, positions: dict) -> bool:
         """Exit / tighten-stop logic for an open trade. Returns True if closed."""
         sym, side = t["symbol"], SIDE_NUM[t["side"]]
-        held = (sig["bar_ts"] - t["opened_bar_ts"]) // self.tf_ms
+        held = (sig["bar_ts"] - (self.st.get(f"hold_from:{t['id']}") or t["opened_bar_ts"])) // self.tf_ms
         reason = "flip" if sig["signal"] == -side else "time" if held >= self.params["max_hold_bars"] else None
         if not reason and self.m.force_exit(np.array([sig["bar_ts"]]), self.params)[0]:
             reason = "weekend"

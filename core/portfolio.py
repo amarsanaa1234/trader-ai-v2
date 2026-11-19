@@ -55,7 +55,9 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
                                                 resume["trades_today"])
         for sym, q in resume["pos"].items():
             if sym in S:
-                pos[sym] = {**{k: v for k, v in q.items() if k != "bar_ts"}, "bar": _row(S[sym], q["bar_ts"])}
+                pos[sym] = {**{k: v for k, v in q.items() if k not in ("bar_ts", "hold_ts")}, "bar": _row(S[sym], q["bar_ts"])}
+                if q.get("hold_ts") is not None:
+                    pos[sym]["hold"] = _row(S[sym], q["hold_ts"])
         for sym, q in resume["pend"].items():
             if sym in S:
                 pend[sym] = {**{k: v for k, v in q.items() if k != "until_ts"}, "until": _row(S[sym], q["until_ts"])}
@@ -138,11 +140,12 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
                     if ext:   # fixed rule (exits.tp_extension): stop near the TP, TP pushed out
                         q["tp"], q["stop"] = ext
                         q["ext"] = q.get("ext", 0) + 1
+                        q["hold"] = i      # owner 2026-11-19: the max-hold clock starts again
                         if (c <= q["stop"]) if side == 1 else (c >= q["stop"]):   # candle closed back past it
                             close_part(sym, q["qty"], q["stop"] * (1 - slip * side), taker, "stop_after_partial", t)
                     elif (h >= q["tp"]) if side == 1 else (l <= q["tp"]):
                         close_part(sym, q["qty"], q["tp"], s["maker"], "tp", t)
-                    elif i - q["bar"] >= max_hold:
+                    elif i - q.get("hold", q["bar"]) >= max_hold:
                         close_part(sym, q["qty"], c * (1 - slip * side), taker, "time", t)
                     elif s["sig"][i] == -side:
                         close_part(sym, q["qty"], c * (1 - slip * side), taker, "flip", t)
@@ -170,7 +173,8 @@ def run(frames: dict, p: dict, start_ts: int | None = None, end_ts: int | None =
         extra["state"] = _plain({
             "equity": equity, "peak": peak, "day": day, "day_start": day_start, "halted": halted,
             "trades_today": trades_today, "last_close": last_close,
-            "pos": {k: {**{a: b for a, b in q.items() if a != "bar"}, "bar_ts": _ts(S[k], q["bar"])} for k, q in pos.items()},
+            "pos": {k: {**{a: b for a, b in q.items() if a not in ("bar", "hold")}, "bar_ts": _ts(S[k], q["bar"]),
+                        **({"hold_ts": _ts(S[k], q["hold"])} if "hold" in q else {})} for k, q in pos.items()},
             "pend": {k: {**{a: b for a, b in q.items() if a != "until"}, "until_ts": _ts(S[k], q["until"])}
                      for k, q in pend.items()}})
     return {**extra, "return": round(float(curve[-1] / start_equity - 1), 4) if len(curve) else 0.0,
